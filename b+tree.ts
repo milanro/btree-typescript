@@ -1,5 +1,6 @@
 // B+ tree by David Piepgrass. License: MIT
 import { ISortedMap, ISortedMapF, ISortedSet } from './interfaces';
+import { nodeToProxy, proxifyNodeArray } from './persistence/util/proxyUtil';
 
 export {
   ISetSource, ISetSink, ISet, ISetF, ISortedSetSource, ISortedSet, ISortedSetF,
@@ -183,7 +184,7 @@ export function simpleComparator(a: any, b: any): number {
  */
 export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap<K,V>
 {
-  private _root: BNode<K, V> = EmptyLeaf as BNode<K,V>;
+  private _root: BNode<K, V> = nodeToProxy(EmptyLeaf as BNode<K,V>);
   _size: number = 0;
   _maxNodeSize: number;
 
@@ -1211,9 +1212,9 @@ function iterator<T>(next: () => IteratorResult<T> = (() => ({ done:true, value:
 
 
 /** Leaf node / base class. **************************************************/
-class BNode<K,V> {
+export class BNode<K,V> {
   // If this is an internal node, _keys[i] is the highest key in children[i].
-  keys: K[];
+  readonly keys: K[];
   values: V[];
   // True if this node might be within multiple `BTree`s (or have multiple parents).
   // If so, it must be cloned before being mutated to avoid changing an unrelated tree.
@@ -1535,11 +1536,11 @@ class BNode<K,V> {
 }
 
 /** Internal node (non-leaf node) ********************************************/
-class BNodeInternal<K,V> extends BNode<K,V> {
+export class BNodeInternal<K,V> extends BNode<K,V> {
   // Note: conventionally B+ trees have one fewer key than the number of 
   // children, but I find it easier to keep the array lengths equal: each
   // keys[i] caches the value of children[i].maxKey().
-  children: BNode<K,V>[];
+  readonly children: BNode<K,V>[];
 
   /** 
    * This does not mark `children` as shared, so it is the responsibility of the caller
@@ -1552,7 +1553,7 @@ class BNodeInternal<K,V> extends BNode<K,V> {
         keys[i] = children[i].maxKey();
     }
     super(keys);
-    this.children = children;
+    this.children = proxifyNodeArray(children);
   }
 
   clone(): BNode<K,V> {

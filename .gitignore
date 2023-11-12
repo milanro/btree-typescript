@@ -3,6 +3,8 @@
 *.bundle.js
 *.out.js
 *.min.js
+*.d.ts
+*.js
 .testpack/
 
 # Misc

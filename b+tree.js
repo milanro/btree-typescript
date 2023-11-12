@@ -15,7 +15,8 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmptyBTree = exports.asSet = exports.simpleComparator = exports.defaultComparator = void 0;
+exports.EmptyBTree = exports.BNodeInternal = exports.BNode = exports.asSet = exports.simpleComparator = exports.defaultComparator = void 0;
+var proxyUtil_1 = require("./persistence/util/proxyUtil");
 /**
  * Compares DefaultComparables to form a strict partial ordering.
  *
@@ -154,7 +155,7 @@ var BTree = /** @class */ (function () {
      *   Must be in range 4..256. If undefined or <4 then default is used; if >256 then 256.
      */
     function BTree(entries, compare, maxNodeSize) {
-        this._root = EmptyLeaf;
+        this._root = (0, proxyUtil_1.nodeToProxy)(EmptyLeaf);
         this._size = 0;
         this._maxNodeSize = maxNodeSize >= 4 ? Math.min(maxNodeSize, 256) : 32;
         this._compare = compare || defaultComparator;
@@ -1396,6 +1397,7 @@ var BNode = /** @class */ (function () {
     };
     return BNode;
 }());
+exports.BNode = BNode;
 /** Internal node (non-leaf node) ********************************************/
 var BNodeInternal = /** @class */ (function (_super) {
     __extends(BNodeInternal, _super);
@@ -1411,7 +1413,7 @@ var BNodeInternal = /** @class */ (function (_super) {
                 keys[i] = children[i].maxKey();
         }
         _this = _super.call(this, keys) || this;
-        _this.children = children;
+        _this.children = (0, proxyUtil_1.proxifyNodeArray)(children);
         return _this;
     }
     BNodeInternal.prototype.clone = function () {
@@ -1657,6 +1659,7 @@ var BNodeInternal = /** @class */ (function (_super) {
     };
     return BNodeInternal;
 }(BNode));
+exports.BNodeInternal = BNodeInternal;
 // Optimization: this array of `undefined`s is used instead of a normal
 // array of values in nodes where `undefined` is the only value.
 // Its length is extended to max node size on first use; since it can
