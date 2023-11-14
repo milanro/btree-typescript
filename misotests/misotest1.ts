@@ -1,18 +1,15 @@
 import BTree from "../b+tree";
+import SortedArray from "../sorted-array";
 
-for (let expectedHeight = 1; expectedHeight < 5; expectedHeight++) {
-    for (let nodeSize = 4; nodeSize < 10; nodeSize++) {
-      const numEntries = nodeSize ** expectedHeight;
-      const entries: [number, number][] = [];
-      for (let i = 0; i < numEntries; i++) {
-        entries.push([i, i]);
-      }
-      const tree = new BTree<number>(entries, undefined, nodeSize);
-      if(tree.height === (expectedHeight - 1)){
-        console.log('OK', expectedHeight, nodeSize);
-      }
-        else{
-            console.log('ERROR', expectedHeight, nodeSize, tree.height);
-        }
-    }
-  }
+
+insert8.bind(null, 8);
+insert8.bind(null, 4);
+function insert8(maxNodeSize: number) {
+  var items: [number,any][] = [[6,"six"],[7,7],[5,5],[2,"two"],[4,4],[1,"one"],[3,3],[8,8]];
+  var tree = new BTree<number>(items, undefined, maxNodeSize);
+  var list = new SortedArray(items, undefined);
+  console.log(maxNodeSize);
+  tree.checkValid();
+}
+
+insert8(10);

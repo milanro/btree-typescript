@@ -1481,7 +1481,8 @@ var BNodeInternal = /** @class */ (function (_super) {
             size += c[i].checkValid(depth + 1, tree, baseIndex + size);
             childSize += c[i].keys.length;
             check(size >= childSize, "wtf", baseIndex); // no way this will ever fail
-            check(i === 0 || c[i - 1].constructor === c[i].constructor, "type mismatch, baseIndex:", baseIndex);
+            var cp = c.map(function (child, index) { return child.getNode(); });
+            check(i === 0 || cp[i - 1].constructor === cp[i].constructor, "type mismatch, baseIndex:", baseIndex);
             if (c[i].maxKey() != k[i])
                 check(false, "keys[", i, "] =", k[i], "is wrong, should be ", c[i].maxKey(), "at depth", depth, "baseIndex", baseIndex);
             if (!(i === 0 || tree._compare(k[i - 1], k[i]) < 0))

@@ -44,6 +44,10 @@ import * as util from 'util';
       }
     }    
 
+    getNode(): AnyNode {
+      return this.node!;
+    }
+
     computeContent(): INodeContent {
       const node = this.node;
       if(node===undefined){
