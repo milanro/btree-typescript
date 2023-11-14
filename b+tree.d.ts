@@ -122,6 +122,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *   Must be in range 4..256. If undefined or <4 then default is used; if >256 then 256.
      */
     constructor(entries?: [K, V][], compare?: (a: K, b: K) => number, maxNodeSize?: number);
+    load(id: string): void;
     /** Gets the number of key-value pairs in the tree. */
     get size(): number;
     /** Gets the number of key-value pairs in the tree. */
@@ -130,6 +131,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
     get isEmpty(): boolean;
     /** Releases the tree so that its size is 0. */
     clear(): void;
+    commit(): void;
     forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): number;
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. The callback can return {break:R} (where R is any value

@@ -16,6 +16,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmptyBTree = exports.BNodeInternal = exports.BNode = exports.asSet = exports.simpleComparator = exports.defaultComparator = void 0;
+var globals_1 = require("./persistence/globals/globals");
 var proxyUtil_1 = require("./persistence/util/proxyUtil");
 /**
  * Compares DefaultComparables to form a strict partial ordering.
@@ -162,6 +163,9 @@ var BTree = /** @class */ (function () {
         if (entries)
             this.setPairs(entries);
     }
+    BTree.prototype.load = function (id) {
+        this._root = (0, proxyUtil_1.setupPersistentNode)(id);
+    };
     Object.defineProperty(BTree.prototype, "size", {
         /////////////////////////////////////////////////////////////////////////////
         // ES6 Map<K,V> methods /////////////////////////////////////////////////////
@@ -184,8 +188,12 @@ var BTree = /** @class */ (function () {
     });
     /** Releases the tree so that its size is 0. */
     BTree.prototype.clear = function () {
-        this._root = EmptyLeaf;
+        this._root = (0, proxyUtil_1.nodeToProxy)(EmptyLeaf);
         this._size = 0;
+    };
+    BTree.prototype.commit = function () {
+        var id = this._root.saveTreeSync((0, globals_1.getPersistenceManager)());
+        console.log('Commited to ' + id);
     };
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. For compatibility with ES6 Map, the argument order to
@@ -244,12 +252,12 @@ var BTree = /** @class */ (function () {
      */
     BTree.prototype.set = function (key, value, overwrite) {
         if (this._root.isShared)
-            this._root = this._root.clone();
+            this._root = (0, proxyUtil_1.nodeToProxy)(this._root.clone());
         var result = this._root.set(key, value, overwrite, this);
         if (result === true || result === false)
             return result;
         // Root node has split, so create a new root node.
-        this._root = new BNodeInternal([this._root, result]);
+        this._root = (0, proxyUtil_1.nodeToProxy)(new BNodeInternal([this._root, result]));
         return true;
     };
     /**
@@ -786,7 +794,7 @@ var BTree = /** @class */ (function () {
      */
     BTree.prototype.greedyClone = function (force) {
         var result = new BTree(undefined, this._compare, this._maxNodeSize);
-        result._root = this._root.greedyClone(force);
+        result._root = (0, proxyUtil_1.nodeToProxy)(this._root.greedyClone(force));
         result._size = this._size;
         return result;
     };
@@ -976,7 +984,7 @@ var BTree = /** @class */ (function () {
     BTree.prototype.editRange = function (low, high, includeHigh, onFound, initialCounter) {
         var root = this._root;
         if (root.isShared)
-            this._root = root = root.clone();
+            this._root = root = (0, proxyUtil_1.nodeToProxy)(root.clone());
         try {
             var r = root.forRange(low, high, includeHigh, true, this, initialCounter || 0, onFound);
             return typeof r === "number" ? r : r.break;
@@ -985,8 +993,8 @@ var BTree = /** @class */ (function () {
             var isShared = void 0;
             while (root.keys.length <= 1 && !root.isLeaf) {
                 isShared || (isShared = root.isShared);
-                this._root = root = root.keys.length === 0 ? EmptyLeaf :
-                    root.children[0];
+                this._root = root = root.keys.length === 0 ? (0, proxyUtil_1.nodeToProxy)(EmptyLeaf) :
+                    (0, proxyUtil_1.nodeToProxy)(root.children[0]);
             }
             // If any ancestor of the new root was shared, the new root must also be shared
             if (isShared) {
@@ -1204,7 +1212,7 @@ var BNode = /** @class */ (function () {
     };
     BNode.prototype.clone = function () {
         var v = this.values;
-        return new BNode(this.keys.slice(0), v === undefVals ? v : v.slice(0));
+        return (0, proxyUtil_1.nodeToProxy)(new BNode(this.keys.slice(0), v === undefVals ? v : v.slice(0)));
     };
     BNode.prototype.greedyClone = function (force) {
         return this.isShared && !force ? this : this.clone();
@@ -1407,6 +1415,7 @@ var BNodeInternal = /** @class */ (function (_super) {
      */
     function BNodeInternal(children, keys) {
         var _this = this;
+        children = children.map(function (child) { return (0, proxyUtil_1.nodeToProxy)(child); });
         if (!keys) {
             keys = [];
             for (var i = 0; i < children.length; i++)
@@ -1420,7 +1429,7 @@ var BNodeInternal = /** @class */ (function (_super) {
         var children = this.children.slice(0);
         for (var i = 0; i < children.length; i++)
             children[i].isShared = true;
-        return new BNodeInternal(children, this.keys.slice(0));
+        return (0, proxyUtil_1.nodeToProxy)(new BNodeInternal(children, this.keys.slice(0)));
     };
     BNodeInternal.prototype.greedyClone = function (force) {
         if (this.isShared && !force)

@@ -1,4 +1,6 @@
 import BTree from "./b+tree";
+import { setPersistenceManager } from "./persistence/globals/globals";
+import { SyncFSPersistenceManager } from "./persistence/manager/persistenceManager";
 
 console.log('tool1');
 
@@ -12,8 +14,20 @@ tree.set('miso2a', 'raba');
 tree.set('miso2b', 'kura');
 tree.set('miso2', 'ebe');
 tree.set('miso3', 'kura');
+tree.set('miso4', 'rata');
 
 
-tree.getRange('miso1a', 'miso2').forEach((value, key) => {
-    console.log(key, value);
+for(let i=0; i<1000; i++){
+    tree.set('miso'+i, 'kura' + i);
+}
+
+
+tree.getRange('miso1a', 'miso3').forEach((value, key) => {
+     console.log(key, value);
 });
+setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db1"));
+tree.commit();
+
+
+
+

@@ -1,6 +1,7 @@
 // B+ tree by David Piepgrass. License: MIT
 import { ISortedMap, ISortedMapF, ISortedSet } from './interfaces';
-import { nodeToProxy, proxifyNodeArray } from './persistence/util/proxyUtil';
+import { getPersistenceManager } from './persistence/globals/globals';
+import { PersistentBNode, nodeToProxy, proxifyNodeArray, setupPersistentNode } from './persistence/util/proxyUtil';
 
 export {
   ISetSource, ISetSink, ISet, ISetF, ISortedSetSource, ISortedSet, ISortedSetF,
@@ -209,6 +210,10 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
       this.setPairs(entries);
   }
   
+  public load(id: string) {
+      this._root = setupPersistentNode(id);
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // ES6 Map<K,V> methods /////////////////////////////////////////////////////
 
@@ -221,9 +226,15 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
 
   /** Releases the tree so that its size is 0. */
   clear() {
-    this._root = EmptyLeaf as BNode<K,V>;
+    this._root = nodeToProxy(EmptyLeaf as BNode<K,V>);
     this._size = 0;
   }
+
+  commit() {
+    const id = (this._root as unknown as PersistentBNode).saveTreeSync(getPersistenceManager());
+    console.log('Commited to ' + id);
+  }
+
 
   forEach(callback: (v:V, k:K, tree:BTree<K,V>) => void, thisArg?: any): number;
 
@@ -286,12 +297,12 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
    */
   set(key: K, value: V, overwrite?: boolean): boolean { 
     if (this._root.isShared)
-      this._root = this._root.clone();
+      this._root = nodeToProxy(this._root.clone());
     var result = this._root.set(key, value, overwrite, this);
     if (result === true || result === false)
       return result;
     // Root node has split, so create a new root node.
-    this._root = new BNodeInternal<K,V>([this._root, result]);
+    this._root = nodeToProxy(new BNodeInternal<K,V>([this._root, result]));
     return true;
   }
 
@@ -882,7 +893,7 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
    */
   greedyClone(force?: boolean): BTree<K,V> {
     var result = new BTree<K,V>(undefined, this._compare, this._maxNodeSize);
-    result._root = this._root.greedyClone(force);
+    result._root = nodeToProxy(this._root.greedyClone(force));
     result._size = this._size;
     return result;
   }
@@ -1090,7 +1101,7 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
   editRange<R=V>(low: K, high: K, includeHigh: boolean, onFound: (k:K,v:V,counter:number) => EditRangeResult<V,R>|void, initialCounter?: number): R|number {
     var root = this._root;
     if (root.isShared)
-      this._root = root = root.clone();
+      this._root = root = nodeToProxy(root.clone());
     try {
       var r = root.forRange(low, high, includeHigh, true, this, initialCounter || 0, onFound);
       return typeof r === "number" ? r : r.break!;
@@ -1098,8 +1109,8 @@ export default class BTree<K=any, V=any> implements ISortedMapF<K,V>, ISortedMap
       let isShared;
       while (root.keys.length <= 1 && !root.isLeaf) {
         isShared ||= root.isShared;
-        this._root = root = root.keys.length === 0 ? EmptyLeaf :
-                    (root as any as BNodeInternal<K,V>).children[0];
+        this._root = root = root.keys.length === 0 ? nodeToProxy(EmptyLeaf) :
+        nodeToProxy((root as any as BNodeInternal<K,V>).children[0]);
       }
       // If any ancestor of the new root was shared, the new root must also be shared
       if (isShared) {
@@ -1332,7 +1343,7 @@ export class BNode<K,V> {
 
   clone(): BNode<K,V> {
     var v = this.values;
-    return new BNode<K,V>(this.keys.slice(0), v === undefVals ? v : v.slice(0));
+    return nodeToProxy( new BNode<K,V>(this.keys.slice(0), v === undefVals ? v : v.slice(0)));
   }
 
   greedyClone(force?: boolean): BNode<K,V> {
@@ -1547,6 +1558,7 @@ export class BNodeInternal<K,V> extends BNode<K,V> {
    * to ensure children are either marked shared, or aren't included in another tree.
    */
   constructor(children: BNode<K,V>[], keys?: K[]) {
+    children = children.map(child=>nodeToProxy(child));
     if (!keys) {
       keys = [];
       for (var i = 0; i < children.length; i++)
@@ -1557,10 +1569,10 @@ export class BNodeInternal<K,V> extends BNode<K,V> {
   }
 
   clone(): BNode<K,V> {
-    var children = this.children.slice(0);
+    var children =  this.children.slice(0);
     for (var i = 0; i < children.length; i++)
       children[i].isShared = true;
-    return new BNodeInternal<K,V>(children, this.keys.slice(0));
+    return nodeToProxy(new BNodeInternal<K,V>(children, this.keys.slice(0)));
   }
 
   greedyClone(force?: boolean): BNode<K,V> {
