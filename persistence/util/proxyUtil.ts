@@ -160,7 +160,17 @@ import * as util from 'util';
 
   function wrapPersistentNode(target: PersistentBNode): NodeProxy {
     return new Proxy<PersistentBNode>(target, {
+      set(target, prop, value, receiver) {
+          target.loadSync(getPersistenceManager());
+          const node = target.node;
+          if(node===undefined){
+              throw new Error('node is undefined');
+          }    
+          (node as {[key: string]: any;})[prop as string] = value;
+          return true;      
+      },
       get(target, prop, receiver) {
+        // console.log('get property from node', prop);
         const originalMethod = Reflect.get(target, prop, receiver);
         if(originalMethod !== undefined && typeof originalMethod === 'function'){
             return function (...args: any[]) {
