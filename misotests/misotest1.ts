@@ -1,10 +1,30 @@
-import BTree from "../b+tree";
+import BTree, { simpleComparator } from "../b+tree";
 
-let items: [string,any][] = [["A",1],["B",2],["C",3],["D",4],["E",5],["F",6],["G",7],["H",8]];
-let tree = new BTree<string>(items);
+const maxNodeSize = 4;
+const tree = new BTree<number, number>(
+  undefined,
+  simpleComparator,
+  maxNodeSize
+);
+// Build a 3 layer tree
+const count = maxNodeSize * maxNodeSize * maxNodeSize;
+for (
+  let index = 0;
+  index < count;
+  index++
+) {
+  tree.set(index, 0);
+}
+// Leaf nodes don't count, so this is depth 2
+console.log(tree.height===2);
 
-var tree2 = tree.clone();
-tree.delete("G");
-console.log(tree2.get('A'));
-
-
+// Delete most of the keys so merging interior nodes is possible, marking all nodes as shared.
+for (
+  let index = 0;
+  index < count;
+  index++
+) {
+  if (index % 4 !== 0) {
+    tree.delete(index);
+  }
+}
