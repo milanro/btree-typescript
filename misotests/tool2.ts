@@ -1,6 +1,6 @@
-import BTree from "./b+tree";
-import { setPersistenceManager } from "./persistence/globals/globals";
-import { SyncFSPersistenceManager } from "./persistence/manager/persistenceManager";
+import BTree from "../b+tree";
+import { setPersistenceManager } from "../persistence/globals/globals";
+import { SyncFSPersistenceManager } from "../persistence/manager/persistenceManager";
 
 console.log('tool1');
 setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db1"));
