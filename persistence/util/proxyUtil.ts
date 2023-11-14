@@ -219,9 +219,12 @@ import * as util from 'util';
             }
         }
         if (prop === "unshift") {
-            return function(value: AnyNode) {
-                target.unshift(nodeToProxy(value));
-                return value;
+            return function(...values: AnyNode[]) {
+              const args = values.map((value, index) => {
+                return nodeToProxy(value);
+            });
+            const result = target.unshift(...args);
+            return result;
             }
         }
         if (prop === "splice") {
