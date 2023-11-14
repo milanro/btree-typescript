@@ -3,12 +3,12 @@ import { setPersistenceManager } from "./persistence/globals/globals";
 import { SyncFSPersistenceManager } from "./persistence/manager/persistenceManager";
 
 console.log('tool4');
-setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db4"));
+setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db5"));
 
 const tree = new BTree();
-tree.load('f425cf886ed422d78052bd341df8e84856090d1646e1bb3773b21f4a6aa7451a');
+tree.load('ae67073795b88eefbafb99916bd4b484635d531ed4c47a6cf5b8356bf3a64104');
 
-tree.getRange('miso1a', 'miso').forEach((value, key) => {
+tree.getRange('miso0000000001', 'miso0000000212').forEach((value, key) => {
    console.log(key, value);
 });
 

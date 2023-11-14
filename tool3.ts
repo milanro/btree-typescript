@@ -9,15 +9,15 @@ const tree = new BTree();
 
 
 for(let i=0; i<10000; i++){
-    console.log('i', i);
-    tree.set('miso'+i, 'kura' + i);
+    const nr = i.toString().padStart(10, '0');
+    tree.set('miso'+nr, 'kura' + nr);
 }
 
 
-tree.getRange('miso1', 'miso2').forEach((value, key) => {
+tree.getRange('miso0000000001', 'miso0000000012').forEach((value, key) => {
      console.log(key, value);
 });
-setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db4"));
+setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db5"));
 tree.commit();
 
 
