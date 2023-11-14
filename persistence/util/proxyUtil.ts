@@ -112,7 +112,7 @@ import * as util from 'util';
       }
       this.loadId = id;
       this.id = undefined
-      // console.log('loaded', id, this.node);
+      console.log('loaded : ', id);
     }
 
     printWholeTree(): void {
@@ -232,6 +232,12 @@ import * as util from 'util';
                     }
                     return nodeToProxy(value);
                 });
+                if(args.length===1){
+                    return target.splice(values[0]);
+                }
+                if(args.length===2){
+                    return target.splice(values[0], values[1]);
+                }
                 const result = target.splice(values[0], values[1], ...args.slice(2));
                 return result;
             }

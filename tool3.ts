@@ -8,15 +8,16 @@ const tree = new BTree();
 
 
 
-for(let i=0; i<35; i++){
+for(let i=0; i<10000; i++){
+    console.log('i', i);
     tree.set('miso'+i, 'kura' + i);
 }
 
 
-tree.getRange('miso1a', 'miso3').forEach((value, key) => {
+tree.getRange('miso1', 'miso2').forEach((value, key) => {
      console.log(key, value);
 });
-setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db3"));
+setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db4"));
 tree.commit();
 
 
