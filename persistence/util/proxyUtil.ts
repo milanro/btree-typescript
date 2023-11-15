@@ -33,7 +33,7 @@ import * as util from 'util';
     constructor(node?: BNode<any,any>, id?: string) {
       this.node = node;
       this.id = id;
-      if(node?.isLeaf) {
+      if(node?.isLeafNode()) {
         this.type = NodeType.LEAF;
       }
       else {
@@ -55,13 +55,13 @@ import * as util from 'util';
       }
       let children: string[] = [];
       if(this.type===NodeType.BRANCH){
-        children = (node as BNodeInternal<any,any>).children.map(child => (child as unknown as PersistentBNode) .computeId());
+        children = (node as BNodeInternal<any,any>).getChildren().map(child => (child as unknown as PersistentBNode) .computeId());
       }
       return {
         type: this.type!,
-        values: node.values,
+        values: node.getValues().filter(value => value!==undefined),
         children,
-        keys: node.keys
+        keys: node.getKeys()
       }
     }
 
@@ -74,11 +74,12 @@ import * as util from 'util';
     }
 
     computeId(): string {
-      if(this.id!==undefined){
-        return this.id;
+      if(!this.isLoaded()){
+        return this.id!;
       }
       else {
         const serialized = this.serializeBNode();
+        console.log('\nserialized', serialized);
         const hash = createHash('sha256').update(serialized).digest('hex');
         return hash;
       }
@@ -105,6 +106,7 @@ import * as util from 'util';
       }
       const id = this.computeId();
       const content = persistence.getSync(id);
+
       const parsed = JSON.parse(content) as INodeContent;
       this.type = parsed.type;
 
@@ -120,9 +122,9 @@ import * as util from 'util';
     }
 
     printWholeTree(): void {
-      console.log(this);
+      console.log(this.computeId());
       if(this.type===NodeType.BRANCH){
-        (this.node as BNodeInternal<any,any>).children.forEach(child => {
+        (this.node as BNodeInternal<any,any>).getChildren().forEach(child => {
           (child as unknown as PersistentBNode).printWholeTree();
         });
       }      
@@ -130,14 +132,14 @@ import * as util from 'util';
 
     saveTreeSync(persistence: PersistenceManager): string {      
       if(!this.isLoaded()){
-        return '';
+        return this.id!;
       }
       if(this.type===NodeType.BRANCH){   
-        if((this.node as BNodeInternal<any,any>).children===undefined){
+        if((this.node as BNodeInternal<any,any>).getChildren()===undefined){
           // console.log('children undefined', this.node);
         }
          (this.node as BNodeInternal<any,any>)
-         .children
+         .getChildren()
          .forEach(
           child => {          
           (child as unknown as PersistentBNode)
@@ -161,6 +163,8 @@ import * as util from 'util';
   function wrapPersistentNode(target: PersistentBNode): NodeProxy {
     return new Proxy<PersistentBNode>(target, {
       set(target, prop, value, receiver) {
+        console.log('set property to node', prop, value);
+        throw new Error('set property to node ' + (prop as string));
           target.loadSync(getPersistenceManager());
           const node = target.node;
           if(node===undefined){
@@ -193,6 +197,8 @@ import * as util from 'util';
                 }
             }
             else {
+              console.log('get attribute from node', prop, nodeMember);
+              throw new Error('get attribute from node ' + (prop as string));
               return nodeMember;
             }
         }

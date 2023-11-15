@@ -467,10 +467,15 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
 export declare function asSet<K, V>(btree: BTree<K, V>): undefined extends V ? ISortedSet<K> : unknown;
 /** Leaf node / base class. **************************************************/
 export declare class BNode<K, V> {
-    readonly keys: K[];
-    values: V[];
-    isShared: true | undefined;
-    get isLeaf(): boolean;
+    readonly _keys: K[];
+    _values: V[];
+    getKeys(): K[];
+    getValues(): V[];
+    setValues(v: V[]): void;
+    _isShared: true | undefined;
+    isNodeShared(): boolean;
+    setShared(value: boolean): void;
+    isLeafNode(): boolean;
     constructor(keys?: K[], values?: V[]);
     maxKey(): K;
     indexOf(key: K, failXor: number, cmp: (a: K, b: K) => number): index;
@@ -495,7 +500,8 @@ export declare class BNode<K, V> {
 }
 /** Internal node (non-leaf node) ********************************************/
 export declare class BNodeInternal<K, V> extends BNode<K, V> {
-    readonly children: BNode<K, V>[];
+    readonly _children: BNode<K, V>[];
+    getChildren(): BNode<K, V>[];
     /**
      * This does not mark `children` as shared, so it is the responsibility of the caller
      * to ensure children are either marked shared, or aren't included in another tree.

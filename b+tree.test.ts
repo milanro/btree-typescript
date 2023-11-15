@@ -441,7 +441,7 @@ describe("cloning and sharing tests", () => {
     // Since this depends on private APIs and types,
     // and this package currently has no way to expose them to tests without exporting them from the package,
     // do some private field access and any casts to make it work.
-    expect((clone['_root'] as any).children[0].children[0]).not.toBe((tree['_root'] as any).children[0].children[0]);
+    expect((clone['_root'] as any).getChildren()[0].getChildren()[0]).not.toBe((tree['_root'] as any).getChildren()[0].getChildren()[0]);
   });
 
   test("Regression test for mergeSibling setting isShared", () => {

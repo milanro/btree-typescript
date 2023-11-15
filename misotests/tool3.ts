@@ -5,7 +5,7 @@ import { SyncFSPersistenceManager } from "../persistence/manager/persistenceMana
 console.log('tool3');
 
 const tree = new BTree();
-const db = "/tmp1/btree/db6";
+const db = "/tmp1/btree/db7";
 
 
 for(let i=0; i<10000; i++){

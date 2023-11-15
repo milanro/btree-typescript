@@ -223,7 +223,7 @@ class BTree {
      * has data that does not affect its sort order.
      */
     set(key, value, overwrite) {
-        if (this._root.isShared)
+        if (this._root.isNodeShared())
             this._root = (0, proxyUtil_1.nodeToProxy)(this._root.clone());
         var result = this._root.set(key, value, overwrite, this);
         if (result === true || result === false)
@@ -350,13 +350,13 @@ class BTree {
             jump: for (;;) {
                 switch (state) {
                     case 0:
-                        if (++i < leaf.keys.length)
-                            return { done: false, value: [leaf.keys[i], leaf.values[i]] };
+                        if (++i < leaf.getKeys().length)
+                            return { done: false, value: [leaf.getKeys()[i], leaf.getValues()[i]] };
                         state = 2;
                         continue;
                     case 1:
-                        if (++i < leaf.keys.length) {
-                            reusedArray[0] = leaf.keys[i], reusedArray[1] = leaf.values[i];
+                        if (++i < leaf.getKeys().length) {
+                            reusedArray[0] = leaf.getKeys()[i], reusedArray[1] = leaf.getValues()[i];
                             return { done: false, value: reusedArray };
                         }
                         state = 2;
@@ -371,7 +371,7 @@ class BTree {
                                 break;
                         }
                         for (; level > 0; level--) {
-                            nodequeue[level - 1] = nodequeue[level][nodeindex[level]].children;
+                            nodequeue[level - 1] = nodequeue[level][nodeindex[level]].getChildren();
                             nodeindex[level - 1] = 0;
                         }
                         leaf = nodequeue[0][nodeindex[0]];
@@ -403,7 +403,7 @@ class BTree {
         var { nodequeue, nodeindex, leaf } = this.findPath(highestKey) || this.findPath(this.maxKey());
         check(!nodequeue[0] || leaf === nodequeue[0][nodeindex[0]], "wat!");
         var i = leaf.indexOf(highestKey, 0, this._compare);
-        if (!skipHighest && i < leaf.keys.length && this._compare(leaf.keys[i], highestKey) <= 0)
+        if (!skipHighest && i < leaf.getKeys().length && this._compare(leaf.getKeys()[i], highestKey) <= 0)
             i++;
         var state = reusedArray !== undefined ? 1 : 0;
         return iterator(() => {
@@ -411,12 +411,12 @@ class BTree {
                 switch (state) {
                     case 0:
                         if (--i >= 0)
-                            return { done: false, value: [leaf.keys[i], leaf.values[i]] };
+                            return { done: false, value: [leaf.getKeys()[i], leaf.getValues()[i]] };
                         state = 2;
                         continue;
                     case 1:
                         if (--i >= 0) {
-                            reusedArray[0] = leaf.keys[i], reusedArray[1] = leaf.values[i];
+                            reusedArray[0] = leaf.getKeys()[i], reusedArray[1] = leaf.getValues()[i];
                             return { done: false, value: reusedArray };
                         }
                         state = 2;
@@ -431,11 +431,11 @@ class BTree {
                                 break;
                         }
                         for (; level > 0; level--) {
-                            nodequeue[level - 1] = nodequeue[level][nodeindex[level]].children;
+                            nodequeue[level - 1] = nodequeue[level][nodeindex[level]].getChildren();
                             nodeindex[level - 1] = nodequeue[level - 1].length - 1;
                         }
                         leaf = nodequeue[0][nodeindex[0]];
-                        i = leaf.keys.length;
+                        i = leaf.getKeys().length;
                         state = reusedArray !== undefined ? 1 : 0;
                         continue;
                     case 3:
@@ -456,13 +456,13 @@ class BTree {
     findPath(key) {
         var nextnode = this._root;
         var nodequeue, nodeindex;
-        if (nextnode.isLeaf) {
+        if (nextnode.isLeafNode()) {
             nodequeue = EmptyArray, nodeindex = EmptyArray; // avoid allocations
         }
         else {
             nodequeue = [], nodeindex = [];
-            for (var d = 0; !nextnode.isLeaf; d++) {
-                nodequeue[d] = nextnode.children;
+            for (var d = 0; !nextnode.isLeafNode(); d++) {
+                nodequeue[d] = nextnode.getChildren();
                 nodeindex[d] = key === undefined ? 0 : nextnode.indexOf(key, 0, this._compare);
                 if (nodeindex[d] >= nodequeue[d].length)
                     return; // first key > maxKey()
@@ -532,8 +532,8 @@ class BTree {
                     if (cursorOrder === 0) {
                         if (thisLeaf && otherLeaf && different) {
                             // Equal keys, check for modifications
-                            const valThis = thisLeaf.values[thisLevelIndices[thisLevelIndices.length - 1]];
-                            const valOther = otherLeaf.values[otherLevelIndices[otherLevelIndices.length - 1]];
+                            const valThis = thisLeaf.getValues()[thisLevelIndices[thisLevelIndices.length - 1]];
+                            const valOther = otherLeaf.getValues()[otherLevelIndices[otherLevelIndices.length - 1]];
                             if (!Object.is(valThis, valOther)) {
                                 const result = different(thisCursor.currentKey, valThis, valOther);
                                 if (result && result.break)
@@ -547,7 +547,7 @@ class BTree {
                         // 2. thisCursor stepped last and leapfrogged otherCursor
                         // Either of these cases is an "only other"
                         if (otherLeaf && onlyOther) {
-                            const otherVal = otherLeaf.values[otherLevelIndices[otherLevelIndices.length - 1]];
+                            const otherVal = otherLeaf.getValues()[otherLevelIndices[otherLevelIndices.length - 1]];
                             const result = onlyOther(otherCursor.currentKey, otherVal);
                             if (result && result.break)
                                 return result.break;
@@ -555,7 +555,7 @@ class BTree {
                     }
                     else if (onlyThis) {
                         if (thisLeaf && prevCursorOrder !== 0) {
-                            const valThis = thisLeaf.values[thisLevelIndices[thisLevelIndices.length - 1]];
+                            const valThis = thisLeaf.getValues()[thisLevelIndices[thisLevelIndices.length - 1]];
                             const result = onlyThis(thisCursor.currentKey, valThis);
                             if (result && result.break)
                                 return result.break;
@@ -606,7 +606,7 @@ class BTree {
         while (canStep) {
             const { leaf, levelIndices, currentKey } = cursor;
             if (leaf) {
-                const value = leaf.values[levelIndices[levelIndices.length - 1]];
+                const value = leaf.getValues()[levelIndices[levelIndices.length - 1]];
                 const result = callback(currentKey, value);
                 if (result && result.break)
                     return result.break;
@@ -663,7 +663,7 @@ class BTree {
             else {
                 // Move to new leaf value
                 const valueIndex = --levelIndices[levelsLength - 1];
-                cursor.currentKey = leaf.keys[valueIndex];
+                cursor.currentKey = leaf.getKeys()[valueIndex];
                 return true;
             }
         }
@@ -671,14 +671,14 @@ class BTree {
             const nextLevel = internalSpine.length;
             const currentLevel = nextLevel - 1;
             const node = internalSpine[currentLevel][levelIndices[currentLevel]];
-            if (node.isLeaf) {
+            if (node.isLeafNode()) {
                 // Entering into a leaf. Set the cursor to point at the last key/value pair.
                 cursor.leaf = node;
-                const valueIndex = levelIndices[nextLevel] = node.values.length - 1;
-                cursor.currentKey = node.keys[valueIndex];
+                const valueIndex = levelIndices[nextLevel] = node.getValues().length - 1;
+                cursor.currentKey = node.getKeys()[valueIndex];
             }
             else {
-                const children = node.children;
+                const children = node.getChildren();
                 internalSpine[nextLevel] = children;
                 const childIndex = children.length - 1;
                 levelIndices[nextLevel] = childIndex;
@@ -749,7 +749,7 @@ class BTree {
      *  copies are cloned so that the changes do not affect other copies.
      *  This is known as copy-on-write behavior, or "lazy copying". */
     clone() {
-        this._root.isShared = true;
+        this._root.setShared(true);
         var result = new BTree(undefined, this._compare, this._maxNodeSize);
         result._root = this._root;
         result._size = this._size;
@@ -949,7 +949,7 @@ class BTree {
      */
     editRange(low, high, includeHigh, onFound, initialCounter) {
         var root = this._root;
-        if (root.isShared)
+        if (root.isNodeShared())
             this._root = root = (0, proxyUtil_1.nodeToProxy)(root.clone());
         try {
             var r = root.forRange(low, high, includeHigh, true, this, initialCounter || 0, onFound);
@@ -957,14 +957,15 @@ class BTree {
         }
         finally {
             let isShared;
-            while (root.keys.length <= 1 && !root.isLeaf) {
-                isShared || (isShared = root.isShared);
-                this._root = root = root.keys.length === 0 ? (0, proxyUtil_1.nodeToProxy)(EmptyLeaf) :
-                    (0, proxyUtil_1.nodeToProxy)(root.children[0]);
+            while (root.getKeys().length <= 1 && !root.isLeafNode()) {
+                isShared || (isShared = root.isNodeShared());
+                this._root = root = root.getKeys().length === 0 ?
+                    (0, proxyUtil_1.nodeToProxy)(EmptyLeaf) :
+                    (0, proxyUtil_1.nodeToProxy)(root.getChildren()[0]);
             }
             // If any ancestor of the new root was shared, the new root must also be shared
             if (isShared) {
-                root.isShared = true;
+                root.setShared(true);
             }
         }
     }
@@ -997,7 +998,7 @@ class BTree {
         let height = -1;
         while (node) {
             height++;
-            node = node.isLeaf ? undefined : node.children[0];
+            node = node.isLeafNode() ? undefined : node.getChildren()[0];
         }
         return height;
     }
@@ -1063,20 +1064,34 @@ function iterator(next = (() => ({ done: true, value: undefined }))) {
 /** Leaf node / base class. **************************************************/
 class BNode {
     constructor(keys = [], values) {
-        this.keys = keys;
-        this.values = values || undefVals;
-        this.isShared = undefined;
+        this._keys = keys;
+        this._values = values || undefVals;
+        this._isShared = undefined;
     }
-    get isLeaf() { return this.children === undefined; }
+    getKeys() { return this._keys; }
+    getValues() { return this._values; }
+    setValues(v) { this._values = v; }
+    isNodeShared() {
+        return this._isShared === true;
+    }
+    setShared(value) {
+        if (value === true)
+            this._isShared = true;
+        else
+            this._isShared = undefined;
+    }
+    isLeafNode() {
+        return this._children === undefined;
+    }
     ///////////////////////////////////////////////////////////////////////////
     // Shared methods /////////////////////////////////////////////////////////
     maxKey() {
-        return this.keys[this.keys.length - 1];
+        return this.getKeys()[this.getKeys().length - 1];
     }
     // If key not found, returns i^failXor where i is the insertion index.
     // Callers that don't care whether there was a match will set failXor=0.
     indexOf(key, failXor, cmp) {
-        const keys = this.keys;
+        const keys = this.getKeys();
         var lo = 0, hi = keys.length, mid = hi >> 1;
         while (lo < hi) {
             var c = cmp(keys[mid], key);
@@ -1144,40 +1159,40 @@ class BNode {
     /////////////////////////////////////////////////////////////////////////////
     // Leaf Node: misc //////////////////////////////////////////////////////////
     minKey() {
-        return this.keys[0];
+        return this.getKeys()[0];
     }
     minPair(reusedArray) {
-        if (this.keys.length === 0)
+        if (this.getKeys().length === 0)
             return undefined;
-        reusedArray[0] = this.keys[0];
-        reusedArray[1] = this.values[0];
+        reusedArray[0] = this.getKeys()[0];
+        reusedArray[1] = this.getValues()[0];
         return reusedArray;
     }
     maxPair(reusedArray) {
-        if (this.keys.length === 0)
+        if (this.getKeys().length === 0)
             return undefined;
-        const lastIndex = this.keys.length - 1;
-        reusedArray[0] = this.keys[lastIndex];
-        reusedArray[1] = this.values[lastIndex];
+        const lastIndex = this.getKeys().length - 1;
+        reusedArray[0] = this.getKeys()[lastIndex];
+        reusedArray[1] = this.getValues()[lastIndex];
         return reusedArray;
     }
     clone() {
-        var v = this.values;
-        return (0, proxyUtil_1.nodeToProxy)(new BNode(this.keys.slice(0), v === undefVals ? v : v.slice(0)));
+        var v = this.getValues();
+        return (0, proxyUtil_1.nodeToProxy)(new BNode(this.getKeys().slice(0), v === undefVals ? v : v.slice(0)));
     }
     greedyClone(force) {
-        return this.isShared && !force ? this : this.clone();
+        return this.isNodeShared() && !force ? this : this.clone();
     }
     get(key, defaultValue, tree) {
         var i = this.indexOf(key, -1, tree._compare);
-        return i < 0 ? defaultValue : this.values[i];
+        return i < 0 ? defaultValue : this.getValues()[i];
     }
     getPairOrNextLower(key, compare, inclusive, reusedArray) {
         var i = this.indexOf(key, -1, compare);
         const indexOrLower = i < 0 ? ~i - 1 : (inclusive ? i : i - 1);
         if (indexOrLower >= 0) {
-            reusedArray[0] = this.keys[indexOrLower];
-            reusedArray[1] = this.values[indexOrLower];
+            reusedArray[0] = this.getKeys()[indexOrLower];
+            reusedArray[1] = this.getValues()[indexOrLower];
             return reusedArray;
         }
         return undefined;
@@ -1185,17 +1200,17 @@ class BNode {
     getPairOrNextHigher(key, compare, inclusive, reusedArray) {
         var i = this.indexOf(key, -1, compare);
         const indexOrLower = i < 0 ? ~i : (inclusive ? i : i + 1);
-        const keys = this.keys;
+        const keys = this.getKeys();
         if (indexOrLower < keys.length) {
             reusedArray[0] = keys[indexOrLower];
-            reusedArray[1] = this.values[indexOrLower];
+            reusedArray[1] = this.getValues()[indexOrLower];
             return reusedArray;
         }
         return undefined;
     }
     checkValid(depth, tree, baseIndex) {
-        var kL = this.keys.length, vL = this.values.length;
-        check(this.values === undefVals ? kL <= vL : kL === vL, "keys/values length mismatch: depth", depth, "with lengths", kL, vL, "and baseIndex", baseIndex);
+        var kL = this.getKeys().length, vL = this.getValues().length;
+        check(this.getValues() === undefVals ? kL <= vL : kL === vL, "keys/values length mismatch: depth", depth, "with lengths", kL, vL, "and baseIndex", baseIndex);
         // Note: we don't check for "node too small" because sometimes a node
         // can legitimately have size 1. This occurs if there is a batch 
         // deletion, leaving a node of size 1, and the siblings are full so
@@ -1212,14 +1227,14 @@ class BNode {
             // key does not exist yet
             i = ~i;
             tree._size++;
-            if (this.keys.length < tree._maxNodeSize) {
+            if (this.getKeys().length < tree._maxNodeSize) {
                 return this.insertInLeaf(i, key, value, tree);
             }
             else {
                 // This leaf node is full and must split
                 var newRightSibling = this.splitOffRightSide(), target = this;
-                if (i > this.keys.length) {
-                    i -= this.keys.length;
+                if (i > this.getKeys().length) {
+                    i -= this.getKeys().length;
                     target = newRightSibling;
                 }
                 target.insertInLeaf(i, key, value, tree);
@@ -1232,66 +1247,66 @@ class BNode {
                 if (value !== undefined)
                     this.reifyValues();
                 // usually this is a no-op, but some users may wish to edit the key
-                this.keys[i] = key;
-                this.values[i] = value;
+                this.getKeys()[i] = key;
+                this.getValues()[i] = value;
             }
             return false;
         }
     }
     reifyValues() {
-        if (this.values === undefVals)
-            return this.values = this.values.slice(0, this.keys.length);
-        return this.values;
+        if (this.getValues() === undefVals)
+            this.setValues(this.getValues().slice(0, this.getKeys().length));
+        return this.getValues();
     }
     insertInLeaf(i, key, value, tree) {
-        this.keys.splice(i, 0, key);
-        if (this.values === undefVals) {
+        this.getKeys().splice(i, 0, key);
+        if (this.getValues() === undefVals) {
             while (undefVals.length < tree._maxNodeSize)
                 undefVals.push(undefined);
             if (value === undefined) {
                 return true;
             }
             else {
-                this.values = undefVals.slice(0, this.keys.length - 1);
+                this.setValues(undefVals.slice(0, this.getKeys().length - 1));
             }
         }
-        this.values.splice(i, 0, value);
+        this.getValues().splice(i, 0, value);
         return true;
     }
     takeFromRight(rhs) {
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
-        // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
-        var v = this.values;
-        if (rhs.values === undefVals) {
+        // assert rhs.getKeys().length > (maxNodeSize/2 && this.getKeys().length<maxNodeSize)
+        var v = this.getValues();
+        if (rhs.getValues() === undefVals) {
             if (v !== undefVals)
                 v.push(undefined);
         }
         else {
             v = this.reifyValues();
-            v.push(rhs.values.shift());
+            v.push(rhs.getValues().shift());
         }
-        this.keys.push(rhs.keys.shift());
+        this.getKeys().push(rhs.getKeys().shift());
     }
     takeFromLeft(lhs) {
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
-        // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
-        var v = this.values;
-        if (lhs.values === undefVals) {
+        // assert rhs.getKeys().length > (maxNodeSize/2 && this.getKeys().length<maxNodeSize)
+        var v = this.getValues();
+        if (lhs.getValues() === undefVals) {
             if (v !== undefVals)
                 v.unshift(undefined);
         }
         else {
             v = this.reifyValues();
-            v.unshift(lhs.values.pop());
+            v.unshift(lhs.getValues().pop());
         }
-        this.keys.unshift(lhs.keys.pop());
+        this.getKeys().unshift(lhs.getKeys().pop());
     }
     splitOffRightSide() {
         // Reminder: parent node must update its copy of key for this node
-        var half = this.keys.length >> 1, keys = this.keys.splice(half);
-        var values = this.values === undefVals ? undefVals : this.values.splice(half);
+        var half = this.getKeys().length >> 1, keys = this.getKeys().splice(half);
+        var values = this.getValues() === undefVals ? undefVals : this.getValues().splice(half);
         return new BNode(keys, values);
     }
     /////////////////////////////////////////////////////////////////////////////
@@ -1314,19 +1329,19 @@ class BNode {
             else if (includeHigh === true)
                 iHigh++;
         }
-        var keys = this.keys, values = this.values;
+        var keys = this.getKeys(), values = this.getValues();
         if (onFound !== undefined) {
             for (var i = iLow; i < iHigh; i++) {
                 var key = keys[i];
                 var result = onFound(key, values[i], count++);
                 if (result !== undefined) {
                     if (editMode === true) {
-                        if (key !== keys[i] || this.isShared === true)
+                        if (key !== keys[i] || this.isNodeShared() === true)
                             throw new Error("BTree illegally changed or cloned in editRange");
                         if (result.delete) {
-                            this.keys.splice(i, 1);
-                            if (this.values !== undefVals)
-                                this.values.splice(i, 1);
+                            this.getKeys().splice(i, 1);
+                            if (this.getValues() !== undefVals)
+                                this.getValues().splice(i, 1);
                             tree._size--;
                             i--;
                             iHigh--;
@@ -1346,13 +1361,13 @@ class BNode {
     }
     /** Adds entire contents of right-hand sibling (rhs is left unchanged) */
     mergeSibling(rhs, _) {
-        this.keys.push.apply(this.keys, rhs.keys);
-        if (this.values === undefVals) {
-            if (rhs.values === undefVals)
+        this.getKeys().push.apply(this.getKeys(), rhs.getKeys());
+        if (this.getValues() === undefVals) {
+            if (rhs.getValues() === undefVals)
                 return;
-            this.values = this.values.slice(0, this.keys.length);
+            this.setValues(this.getValues().slice(0, this.getKeys().length));
         }
-        this.values.push.apply(this.values, rhs.reifyValues());
+        this.getValues().push.apply(this.getValues(), rhs.reifyValues());
     }
 }
 exports.BNode = BNode;
@@ -1370,37 +1385,38 @@ class BNodeInternal extends BNode {
                 keys[i] = children[i].maxKey();
         }
         super(keys);
-        this.children = (0, proxyUtil_1.proxifyNodeArray)(children);
+        this._children = (0, proxyUtil_1.proxifyNodeArray)(children);
     }
+    getChildren() { return this._children; }
     clone() {
-        var children = this.children.slice(0);
+        var children = this.getChildren().slice(0);
         for (var i = 0; i < children.length; i++)
-            children[i].isShared = true;
-        return (0, proxyUtil_1.nodeToProxy)(new BNodeInternal(children, this.keys.slice(0)));
+            children[i].setShared(true);
+        return (0, proxyUtil_1.nodeToProxy)(new BNodeInternal(children, this.getKeys().slice(0)));
     }
     greedyClone(force) {
-        if (this.isShared && !force)
+        if (this.isNodeShared() && !force)
             return this;
-        var nu = new BNodeInternal(this.children.slice(0), this.keys.slice(0));
-        for (var i = 0; i < nu.children.length; i++)
-            nu.children[i] = nu.children[i].greedyClone(force);
+        var nu = new BNodeInternal(this.getChildren().slice(0), this.getKeys().slice(0));
+        for (var i = 0; i < nu.getChildren().length; i++)
+            nu.getChildren()[i] = nu.getChildren()[i].greedyClone(force);
         return nu;
     }
     minKey() {
-        return this.children[0].minKey();
+        return this.getChildren()[0].minKey();
     }
     minPair(reusedArray) {
-        return this.children[0].minPair(reusedArray);
+        return this.getChildren()[0].minPair(reusedArray);
     }
     maxPair(reusedArray) {
-        return this.children[this.children.length - 1].maxPair(reusedArray);
+        return this.getChildren()[this.getChildren().length - 1].maxPair(reusedArray);
     }
     get(key, defaultValue, tree) {
-        var i = this.indexOf(key, 0, tree._compare), children = this.children;
+        var i = this.indexOf(key, 0, tree._compare), children = this.getChildren();
         return i < children.length ? children[i].get(key, defaultValue, tree) : undefined;
     }
     getPairOrNextLower(key, compare, inclusive, reusedArray) {
-        var i = this.indexOf(key, 0, compare), children = this.children;
+        var i = this.indexOf(key, 0, compare), children = this.getChildren();
         if (i >= children.length)
             return this.maxPair(reusedArray);
         const result = children[i].getPairOrNextLower(key, compare, inclusive, reusedArray);
@@ -1410,7 +1426,7 @@ class BNodeInternal extends BNode {
         return result;
     }
     getPairOrNextHigher(key, compare, inclusive, reusedArray) {
-        var i = this.indexOf(key, 0, compare), children = this.children, length = children.length;
+        var i = this.indexOf(key, 0, compare), children = this.getChildren(), length = children.length;
         if (i >= length)
             return undefined;
         const result = children[i].getPairOrNextHigher(key, compare, inclusive, reusedArray);
@@ -1420,13 +1436,13 @@ class BNodeInternal extends BNode {
         return result;
     }
     checkValid(depth, tree, baseIndex) {
-        let kL = this.keys.length, cL = this.children.length;
+        let kL = this.getKeys().length, cL = this.getChildren().length;
         check(kL === cL, "keys/children length mismatch: depth", depth, "lengths", kL, cL, "baseIndex", baseIndex);
         check(kL > 1 || depth > 0, "internal node has length", kL, "at depth", depth, "baseIndex", baseIndex);
-        let size = 0, c = this.children, k = this.keys, childSize = 0;
+        let size = 0, c = this.getChildren(), k = this.getKeys(), childSize = 0;
         for (var i = 0; i < cL; i++) {
             size += c[i].checkValid(depth + 1, tree, baseIndex + size);
-            childSize += c[i].keys.length;
+            childSize += c[i].getKeys().length;
             check(size >= childSize, "wtf", baseIndex); // no way this will ever fail
             const cp = c.map((child, index) => child.getNode());
             check(i === 0 || cp[i - 1].constructor === cp[i].constructor, "type mismatch, baseIndex:", baseIndex);
@@ -1445,37 +1461,37 @@ class BNodeInternal extends BNode {
     /////////////////////////////////////////////////////////////////////////////
     // Internal Node: set & node splitting //////////////////////////////////////
     set(key, value, overwrite, tree) {
-        var c = this.children, max = tree._maxNodeSize, cmp = tree._compare;
+        var c = this.getChildren(), max = tree._maxNodeSize, cmp = tree._compare;
         var i = Math.min(this.indexOf(key, 0, cmp), c.length - 1), child = c[i];
-        if (child.isShared)
+        if (child.isNodeShared())
             c[i] = child = child.clone();
-        if (child.keys.length >= max) {
+        if (child.getKeys().length >= max) {
             // child is full; inserting anything else will cause a split.
             // Shifting an item to the left or right sibling may avoid a split.
             // We can do a shift if the adjacent node is not full and if the
             // current key can still be placed in the same node after the shift.
             var other;
-            if (i > 0 && (other = c[i - 1]).keys.length < max && cmp(child.keys[0], key) < 0) {
-                if (other.isShared)
+            if (i > 0 && (other = c[i - 1]).getKeys().length < max && cmp(child.getKeys()[0], key) < 0) {
+                if (other.isNodeShared())
                     c[i - 1] = other = other.clone();
                 other.takeFromRight(child);
-                this.keys[i - 1] = other.maxKey();
+                this.getKeys()[i - 1] = other.maxKey();
             }
-            else if ((other = c[i + 1]) !== undefined && other.keys.length < max && cmp(child.maxKey(), key) < 0) {
-                if (other.isShared)
+            else if ((other = c[i + 1]) !== undefined && other.getKeys().length < max && cmp(child.maxKey(), key) < 0) {
+                if (other.isNodeShared())
                     c[i + 1] = other = other.clone();
                 other.takeFromLeft(child);
-                this.keys[i] = c[i].maxKey();
+                this.getKeys()[i] = c[i].maxKey();
             }
         }
         var result = child.set(key, value, overwrite, tree);
         if (result === false)
             return false;
-        this.keys[i] = child.maxKey();
+        this.getKeys()[i] = child.maxKey();
         if (result === true)
             return true;
         // The child has split and `result` is a new right child... does it fit?
-        if (this.keys.length < max) { // yes
+        if (this.getKeys().length < max) { // yes
             this.insert(i + 1, result);
             return true;
         }
@@ -1483,7 +1499,7 @@ class BNodeInternal extends BNode {
             var newRightSibling = this.splitOffRightSide(), target = this;
             if (cmp(result.maxKey(), this.maxKey()) > 0) {
                 target = newRightSibling;
-                i -= this.keys.length;
+                i -= this.getKeys().length;
             }
             target.insert(i + 1, result);
             return newRightSibling;
@@ -1495,8 +1511,8 @@ class BNodeInternal extends BNode {
      * to ensure that either child is marked shared, or it is not included in another tree.
      */
     insert(i, child) {
-        this.children.splice(i, 0, child);
-        this.keys.splice(i, 0, child.maxKey());
+        this.getChildren().splice(i, 0, child);
+        this.getKeys().splice(i, 0, child.maxKey());
     }
     /**
      * Split this node.
@@ -1504,22 +1520,22 @@ class BNodeInternal extends BNode {
      */
     splitOffRightSide() {
         // assert !this.isShared;
-        var half = this.children.length >> 1;
-        return new BNodeInternal(this.children.splice(half), this.keys.splice(half));
+        var half = this.getChildren().length >> 1;
+        return new BNodeInternal(this.getChildren().splice(half), this.getKeys().splice(half));
     }
     takeFromRight(rhs) {
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
-        // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
-        this.keys.push(rhs.keys.shift());
-        this.children.push(rhs.children.shift());
+        // assert rhs.getKeys().length > (maxNodeSize/2 && this.getKeys().length<maxNodeSize)
+        this.getKeys().push(rhs.getKeys().shift());
+        this.getChildren().push(rhs.getChildren().shift());
     }
     takeFromLeft(lhs) {
         // Reminder: parent node must update its copy of key for this node
         // assert: neither node is shared
-        // assert rhs.keys.length > (maxNodeSize/2 && this.keys.length<maxNodeSize)
-        this.keys.unshift(lhs.keys.pop());
-        this.children.unshift(lhs.children.pop());
+        // assert rhs.getKeys().length > (maxNodeSize/2 && this.getKeys().length<maxNodeSize)
+        this.getKeys().unshift(lhs.getKeys().pop());
+        this.getChildren().unshift(lhs.getChildren().pop());
     }
     /////////////////////////////////////////////////////////////////////////////
     // Internal Node: scanning & deletions //////////////////////////////////////
@@ -1528,7 +1544,7 @@ class BNodeInternal extends BNode {
     //       unless the operation is to stop early.
     forRange(low, high, includeHigh, editMode, tree, count, onFound) {
         var cmp = tree._compare;
-        var keys = this.keys, children = this.children;
+        var keys = this.getKeys(), children = this.getChildren();
         var iLow = this.indexOf(low, 0, cmp), i = iLow;
         var iHigh = Math.min(high === low ? iLow : this.indexOf(high, 0, cmp), keys.length - 1);
         if (!editMode) {
@@ -1543,7 +1559,7 @@ class BNodeInternal extends BNode {
         else if (i <= iHigh) {
             try {
                 for (; i <= iHigh; i++) {
-                    if (children[i].isShared)
+                    if (children[i].isNodeShared())
                         children[i] = children[i].clone();
                     var result = children[i].forRange(low, high, includeHigh, editMode, tree, count, onFound);
                     // Note: if children[i] is empty then keys[i]=undefined.
@@ -1560,8 +1576,8 @@ class BNodeInternal extends BNode {
                 if (iLow > 0)
                     iLow--;
                 for (i = iHigh; i >= iLow; i--) {
-                    if (children[i].keys.length <= half) {
-                        if (children[i].keys.length !== 0) {
+                    if (children[i].getKeys().length <= half) {
+                        if (children[i].getKeys().length !== 0) {
                             this.tryMerge(i, tree._maxNodeSize);
                         }
                         else { // child is empty! delete it!
@@ -1570,7 +1586,7 @@ class BNodeInternal extends BNode {
                         }
                     }
                 }
-                if (children.length !== 0 && children[0].keys.length === 0)
+                if (children.length !== 0 && children[0].getKeys().length === 0)
                     check(false, "emptiness bug");
             }
         }
@@ -1578,15 +1594,15 @@ class BNodeInternal extends BNode {
     }
     /** Merges child i with child i+1 if their combined size is not too large */
     tryMerge(i, maxSize) {
-        var children = this.children;
+        var children = this.getChildren();
         if (i >= 0 && i + 1 < children.length) {
-            if (children[i].keys.length + children[i + 1].keys.length <= maxSize) {
-                if (children[i].isShared) // cloned already UNLESS i is outside scan range
+            if (children[i].getKeys().length + children[i + 1].getKeys().length <= maxSize) {
+                if (children[i].isNodeShared()) // cloned already UNLESS i is outside scan range
                     children[i] = children[i].clone();
                 children[i].mergeSibling(children[i + 1], maxSize);
                 children.splice(i + 1, 1);
-                this.keys.splice(i + 1, 1);
-                this.keys[i] = children[i].maxKey();
+                this.getKeys().splice(i + 1, 1);
+                this.getKeys()[i] = children[i].maxKey();
                 return true;
             }
         }
@@ -1599,15 +1615,15 @@ class BNodeInternal extends BNode {
      */
     mergeSibling(rhs, maxNodeSize) {
         // assert !this.isShared;
-        var oldLength = this.keys.length;
-        this.keys.push.apply(this.keys, rhs.keys);
-        const rhsChildren = rhs.children;
-        this.children.push.apply(this.children, rhsChildren);
-        if (rhs.isShared && !this.isShared) {
+        var oldLength = this.getKeys().length;
+        this.getKeys().push.apply(this.getKeys(), rhs.getKeys());
+        const rhsChildren = rhs.getChildren();
+        this.getChildren().push.apply(this.getChildren(), rhsChildren);
+        if (rhs.isNodeShared() && !this.isNodeShared) {
             // All children of a shared node are implicitly shared, and since their new
             // parent is not shared, they must now be explicitly marked as shared.
             for (var i = 0; i < rhsChildren.length; i++)
-                rhsChildren[i].isShared = true;
+                rhsChildren[i].setShared(true);
         }
         // If our children are themselves almost empty due to a mass-delete,
         // they may need to be merged too (but only the oldLength-1 and its
@@ -1632,7 +1648,7 @@ const Delete = { delete: true }, DeleteRange = () => Delete;
 const Break = { break: true };
 const EmptyLeaf = (function () {
     var n = new BNode();
-    n.isShared = true;
+    n.setShared(true);
     return n;
 })();
 const EmptyArray = [];
