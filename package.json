@@ -6,8 +6,7 @@
   "typings": "b+tree",
   "scripts": {
     "test": "tsc && echo //ts-jest-issue-657 >interfaces.js && jest",
-    "build": "tsc && npm run minify",
-    "minify": "uglifyjs -cm -o b+tree.min.js -- b+tree.js",
+    "build": "tsc",
     "prepare": "npm run build",
     "safePublish": "npm run build && testpack && npm publish",
     "benchmark": "npm run build && node benchmarks.js"

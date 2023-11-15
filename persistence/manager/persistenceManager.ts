@@ -2,18 +2,51 @@ import * as fs from 'fs';
 
 
 export interface PersistenceManager {
-    /*
+    
     get(id: string): Promise<string>;
     put(id: string, content: string): Promise<void>;
     contains(id: string): Promise<boolean>;
-    */
+
     getSync(id: string): string;
     putSync(id: string, content: string): void;
     containsSync(id: string): boolean;
+
 }
 
 export class SyncFSPersistenceManager implements PersistenceManager {
     constructor(private rootPath: string) {
+    }
+    async get(id: string) {
+        const dir = this.computeDir(id);
+        const path = this.computePath(dir, id);
+        const content = await fs.promises.readFile(path, {encoding: 'utf-8'}) as string;
+        return content;
+    }
+    async put(id: string, content: string): Promise<void> {
+        if(await this.containsSync(id)){
+            return;
+        }
+        const dir = this.computeDir(id);
+        this.createDirectories(dir);
+        const path = this.computePath(dir, id);
+        await fs.promises.writeFile(path, content, {encoding: 'utf-8'});
+    }
+
+    
+
+    async exists(path: string): Promise<boolean> {
+        try {
+            await fs.promises.access(path, fs.constants.F_OK);
+            return true;
+          } catch (error) {
+            return false;
+          }
+    }
+
+    async contains(id: string): Promise<boolean> {
+        const dir = this.computeDir(id);
+        const path = this.computePath(dir, id);
+        return await this.exists(path);
     }
 
     private computeDir(id: string): string {
@@ -28,20 +61,11 @@ export class SyncFSPersistenceManager implements PersistenceManager {
     private computePath(dir: string, id: string): string {
         return `${dir}/${id}.json`;
     }
-
-    private readTextFileToStringSync(filePath: string) {
-        return fs.readFileSync(filePath, 'utf-8');
-    }
-
-    private writeStringToTextFileSync(filePath: string, content: string) {
-        fs.writeFileSync(filePath, content, 'utf-8');
-    }
       
-
     getSync(id: string): string {
         const dir = this.computeDir(id);
         const path = this.computePath(dir, id);
-        const content = this.readTextFileToStringSync(path);
+        const content = fs.readFileSync(path, 'utf-8');
         return content;
     }
 
@@ -50,9 +74,9 @@ export class SyncFSPersistenceManager implements PersistenceManager {
             return;
         }
         const dir = this.computeDir(id);
-        this.createDirectories(dir);
+        this.createDirectoriesSync(dir);
         const path = this.computePath(dir, id);
-        this.writeStringToTextFileSync(path, content);
+        fs.writeFileSync(path, content, 'utf-8');
     }
 
     containsSync(id: string): boolean {
@@ -66,18 +90,27 @@ export class SyncFSPersistenceManager implements PersistenceManager {
           }
     }
 
+ 
+    async createDirectories(fullPath: string): Promise<void> {
+        const pathSegments = fullPath.split('/');
+        await pathSegments.reduce(async (currentPath: Promise<string>, segment: string) => {
+            const currentFullPath = `${currentPath}/${segment}`;
+            if (! await this.exists(currentFullPath)) {
+                await fs.promises.mkdir(currentFullPath);
+            }
+            return currentFullPath;
+        }, Promise.resolve(''));
+    }
 
-    createDirectories(fullPath: string): void {
-        const pathSegments = fullPath.split('/');      
-        pathSegments.reduce((currentPath, segment) => {
-          const currentFullPath = `${currentPath}/${segment}`;      
-          if (!fs.existsSync(currentFullPath)) {
-            fs.mkdirSync(currentFullPath);
-          }
-          return currentFullPath;
+    createDirectoriesSync(fullPath: string): void {
+        const pathSegments = fullPath.split('/');
+        pathSegments.reduce((currentPath: string, segment: string) => {
+            const currentFullPath = `${currentPath}/${segment}`;
+            if (!fs.existsSync(currentFullPath)) {
+                fs.mkdirSync(currentFullPath);
+            }
+            return currentFullPath;
         }, '');
-      }
-
-
+    }
 
 }
