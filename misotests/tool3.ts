@@ -5,7 +5,7 @@ import { SyncFSPersistenceManager } from "../persistence/manager/persistenceMana
 console.log('tool3');
 
 const tree = new BTree();
-
+const db = "/tmp1/btree/db6";
 
 
 for(let i=0; i<10000; i++){
@@ -17,9 +17,9 @@ for(let i=0; i<10000; i++){
 tree.getRange('miso0000000001', 'miso0000000012').forEach((value, key) => {
      console.log(key, value);
 });
-setPersistenceManager(new SyncFSPersistenceManager("/tmp1/btree/db5"));
+setPersistenceManager(new SyncFSPersistenceManager(db));
 tree.commit();
 
-
+console.log(db)
 
 
