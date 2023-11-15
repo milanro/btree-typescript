@@ -24,6 +24,9 @@ for (
   index < count;
   index++
 ) {
+  if(index === 29){
+    console.log('here');
+  }
   if (index % 4 !== 0) {
     tree.delete(index);
   }

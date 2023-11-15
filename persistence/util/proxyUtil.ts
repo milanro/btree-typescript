@@ -134,7 +134,7 @@ import * as util from 'util';
       }
       if(this.type===NodeType.BRANCH){   
         if((this.node as BNodeInternal<any,any>).children===undefined){
-          console.log('children undefined', this.node);
+          // console.log('children undefined', this.node);
         }
          (this.node as BNodeInternal<any,any>)
          .children
@@ -186,7 +186,8 @@ import * as util from 'util';
             }    
             const nodeMember = Reflect.get(node, prop);  
             if(nodeMember!==undefined && typeof nodeMember === 'function'){
-                return function (...args: any[]) {                    
+                return function (...args: any[]) {        
+                    // console.log('call method from node', prop, args);            
                     const result = nodeMember.apply(node, args);
                     return result;
                 }
@@ -228,15 +229,19 @@ import * as util from 'util';
             // console.log('prop', prop);
         }
         if (prop === "push") {
-            return function(value: AnyNode) {
-                target.push(nodeToProxy(value));
+            return function(...values: AnyNode[]) {
+              const args = values.map((value, index) => {
+                return nodeToProxy(value);
+              });
+              const result = target.push(...args);
+              return result;
             }
         }
         if (prop === "unshift") {
             return function(...values: AnyNode[]) {
               const args = values.map((value, index) => {
                 return nodeToProxy(value);
-            });
+              });
             const result = target.unshift(...args);
             return result;
             }
