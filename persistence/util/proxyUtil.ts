@@ -33,8 +33,8 @@ export class PersistentBNode {
   }
 
   async getNode(): Promise<AnyNode | undefined> {
-    if(this.type === undefined && this.isLoaded()) {
-      if (this._node?.isLeafNode()) {
+    if(this.isLoaded()) {
+      if (await this._node?.isLeafNode()) {
         this.type = NodeType.LEAF;
       } else {
         this.type = NodeType.BRANCH;
@@ -210,7 +210,7 @@ function wrapPersistentNode(target: PersistentBNode): NodeProxy {
               console.log('Failing all method from node' + " PROP : ", (prop as string), "\nargs:\n" + args);
             }                        
             try{
-              const result = nodeMember.apply(node, args);
+              const result = await nodeMember.apply(node, args);
               return result;
             }
             catch(e) {

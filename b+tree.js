@@ -144,8 +144,12 @@ class BTree {
         this._maxNodeSize = maxNodeSize >= 4 ? Math.min(maxNodeSize, 256) : 32;
         this._compare =
             compare || defaultComparator;
-        if (entries)
-            this.setPairs(entries);
+        this._entries = entries;
+    }
+    async applyEntries() {
+        if (this._entries)
+            await this.setPairs(this._entries);
+        this._entries = undefined;
     }
     load(id) {
         this._root = (0, proxyUtil_1.setupPersistentNode)(id);
@@ -236,6 +240,7 @@ class BTree {
             return result;
         // Root node has split, so create a new root node.
         this._root = (0, proxyUtil_1.nodeToProxy)(new BNodeInternal([this._root, result]));
+        await this._root.applyMaxKeys();
         return true;
     }
     /**
@@ -1150,10 +1155,6 @@ class BNode {
         const keys = await this.getKeys();
         return keys[keys.length - 1];
     }
-    maxKeySync() {
-        const keys = this._keys;
-        return keys[keys.length - 1];
-    }
     // If key not found, returns i^failXor where i is the insertion index.
     // Callers that don't care whether there was a match will set failXor=0.
     async indexOf(key, failXor, cmp) {
@@ -1302,7 +1303,7 @@ class BNode {
             i = ~i;
             tree._size++;
             if ((await this.getKeys()).length < tree._maxNodeSize) {
-                return this.insertInLeaf(i, key, value, tree);
+                return await this.insertInLeaf(i, key, value, tree);
             }
             else {
                 // This leaf node is full and must split
@@ -1311,7 +1312,7 @@ class BNode {
                     i -= (await this.getKeys()).length;
                     target = newRightSibling;
                 }
-                target.insertInLeaf(i, key, value, tree);
+                await target.insertInLeaf(i, key, value, tree);
                 return newRightSibling;
             }
         }
@@ -1319,7 +1320,7 @@ class BNode {
             // Key already exists
             if (overwrite !== false) {
                 if (value !== undefined)
-                    this.reifyValues();
+                    await this.reifyValues();
                 // usually this is a no-op, but some users may wish to edit the key
                 (await this.getKeys())[i] = key;
                 (await this.getValues())[i] = value;
@@ -1329,8 +1330,8 @@ class BNode {
     }
     async reifyValues() {
         if ((await this.getValues()) === undefVals)
-            this.setValues((await this.getValues()).slice(0, (await this.getKeys()).length));
-        return this.getValues();
+            await this.setValues((await this.getValues()).slice(0, (await this.getKeys()).length));
+        return await this.getValues();
     }
     async insertInLeaf(i, key, value, tree) {
         (await this.getKeys()).splice(i, 0, key);
@@ -1341,7 +1342,7 @@ class BNode {
                 return true;
             }
             else {
-                this.setValues(undefVals.slice(0, (await this.getKeys()).length - 1));
+                await this.setValues(undefVals.slice(0, (await this.getKeys()).length - 1));
             }
         }
         (await this.getValues()).splice(i, 0, value);
@@ -1457,8 +1458,6 @@ class BNodeInternal extends BNode {
         children = children.map((child) => (0, proxyUtil_1.nodeToProxy)(child));
         if (!keys) {
             keys = [];
-            for (var i = 0; i < children.length; i++)
-                keys[i] = children[i].maxKeySync();
         }
         super(keys);
         this._children = (0, proxyUtil_1.proxifyNodeArray)(children);
@@ -1466,17 +1465,28 @@ class BNodeInternal extends BNode {
     async getChildren() {
         return this._children;
     }
+    async applyMaxKeys() {
+        const children = await this.getChildren();
+        const keys = await this.getKeys();
+        if (keys.length !== children.length) {
+            this._keys = [];
+            for (var i = 0; i < children.length; i++)
+                this._keys[i] = await children[i].maxKey();
+        }
+    }
     async clone() {
         var children = (await this.getChildren()).slice(0);
         for (var i = 0; i < children.length; i++)
             children[i].setShared(true);
         const clonedNode = new BNodeInternal(children, (await this.getKeys()).slice(0));
+        await clonedNode.applyMaxKeys();
         return (0, proxyUtil_1.nodeToProxy)(clonedNode);
     }
     async greedyClone(force) {
         if ((await this.isNodeShared()) && !force)
             return this;
         var nu = new BNodeInternal((await this.getChildren()).slice(0), (await this.getKeys()).slice(0));
+        await nu.applyMaxKeys();
         for (var i = 0; i < (await nu.getChildren()).length; i++) {
             const children = await nu.getChildren();
             children[i] = await children[i].greedyClone(force);
@@ -1559,7 +1569,7 @@ class BNodeInternal extends BNode {
                 cmp((await child.getKeys())[0], key) < 0) {
                 if (await other.isNodeShared())
                     c[i - 1] = other = await other.clone();
-                other.takeFromRight(child);
+                await other.takeFromRight(child);
                 const keys = await this.getKeys();
                 keys[i - 1] = await other.maxKey();
             }
@@ -1583,7 +1593,7 @@ class BNodeInternal extends BNode {
         // The child has split and `result` is a new right child... does it fit?
         if ((await this.getKeys()).length < max) {
             // yes
-            this.insert(i + 1, result);
+            await this.insert(i + 1, result);
             return true;
         }
         else {
@@ -1593,7 +1603,7 @@ class BNodeInternal extends BNode {
                 target = newRightSibling;
                 i -= (await this.getKeys()).length;
             }
-            target.insert(i + 1, result);
+            await target.insert(i + 1, result);
             return newRightSibling;
         }
     }
@@ -1613,7 +1623,9 @@ class BNodeInternal extends BNode {
     async splitOffRightSide() {
         // assert !this.isShared;
         var half = (await this.getChildren()).length >> 1;
-        return new BNodeInternal((await this.getChildren()).splice(half), (await this.getKeys()).splice(half));
+        const node = new BNodeInternal((await this.getChildren()).splice(half), (await this.getKeys()).splice(half));
+        await node.applyMaxKeys();
+        return node;
     }
     async takeFromRight(rhs) {
         // Reminder: parent node must update its copy of key for this node

@@ -113,6 +113,7 @@ export default class BTree<K = any, V = any> {
      * @returns a negative value if a < b, 0 if a === b and a positive value if a > b
      */
     _compare: (a: K, b: K) => number;
+    _entries?: [K, V][];
     /**
      * Initializes an empty B+ tree.
      * @param compare Custom function to compare pairs of elements in the tree.
@@ -122,6 +123,7 @@ export default class BTree<K = any, V = any> {
      *   Must be in range 4..256. If undefined or <4 then default is used; if >256 then 256.
      */
     constructor(entries?: [K, V][], compare?: (a: K, b: K) => number, maxNodeSize?: number);
+    applyEntries(): Promise<void>;
     load(id: string): void;
     /** Gets the number of key-value pairs in the tree. */
     get size(): number;
@@ -467,7 +469,7 @@ export default class BTree<K = any, V = any> {
 export declare function asSet<K, V>(btree: BTree<K, V>): undefined extends V ? ISortedSet<K> : unknown;
 /** Leaf node / base class. **************************************************/
 export declare class BNode<K, V> {
-    readonly _keys: K[];
+    _keys: K[];
     _values: V[];
     getKeys(): Promise<K[]>;
     getValues(): Promise<V[]>;
@@ -478,7 +480,6 @@ export declare class BNode<K, V> {
     isLeafNode(): Promise<boolean>;
     constructor(keys?: K[], values?: V[]);
     maxKey(): Promise<K>;
-    maxKeySync(): K;
     indexOf(key: K, failXor: number, cmp: (a: K, b: K) => number): Promise<index>;
     minKey(): Promise<K | undefined>;
     minPair(reusedArray: [K, V]): Promise<[K, V] | undefined>;
@@ -508,6 +509,7 @@ export declare class BNodeInternal<K, V> extends BNode<K, V> {
      * to ensure children are either marked shared, or aren't included in another tree.
      */
     constructor(children: BNode<K, V>[], keys?: K[]);
+    applyMaxKeys(): Promise<void>;
     clone(): Promise<BNode<K, V>>;
     greedyClone(force?: boolean): Promise<BNode<K, V>>;
     minKey(): Promise<K | undefined>;

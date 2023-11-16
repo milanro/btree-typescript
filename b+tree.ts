@@ -233,6 +233,13 @@ export default class BTree<K = any, V = any>
    * @returns a negative value if a < b, 0 if a === b and a positive value if a > b
    */
   _compare: (a: K, b: K) => number;
+  
+
+  _entries?: [K, V][];
+
+
+
+  
 
   /**
    * Initializes an empty B+ tree.
@@ -250,8 +257,14 @@ export default class BTree<K = any, V = any>
     this._maxNodeSize = maxNodeSize! >= 4 ? Math.min(maxNodeSize!, 256) : 32;
     this._compare =
       compare || (defaultComparator as any as (a: K, b: K) => number);
-    if (entries) this.setPairs(entries);
+      this._entries = entries;
   }
+
+  async applyEntries() {
+    if (this._entries) await this.setPairs(this._entries);
+    this._entries = undefined;
+  }
+
 
   public load(id: string) {
     this._root = setupPersistentNode(id);
@@ -362,6 +375,7 @@ export default class BTree<K = any, V = any>
     if (result === true || result === false) return result;
     // Root node has split, so create a new root node.
     this._root = nodeToProxy(new BNodeInternal<K, V>([this._root, result]));
+    await (this._root as BNodeInternal<K, V>).applyMaxKeys();
     return true;
   }
 
@@ -1540,7 +1554,7 @@ function iterator<T>(
 /** Leaf node / base class. **************************************************/
 export class BNode<K, V> {
   // If this is an internal node, _keys[i] is the highest key in children[i].
-  readonly _keys: K[];
+  _keys: K[];
   _values: V[];
   async getKeys() {
     return this._keys;
@@ -1582,10 +1596,6 @@ export class BNode<K, V> {
     return keys[keys.length - 1];
   }
 
-  maxKeySync() {
-    const keys = this._keys;
-    return keys[keys.length - 1];
-  }
 
   // If key not found, returns i^failXor where i is the insertion index.
   // Callers that don't care whether there was a match will set failXor=0.
@@ -1794,7 +1804,7 @@ export class BNode<K, V> {
       tree._size++;
 
       if ((await this.getKeys()).length < tree._maxNodeSize) {
-        return this.insertInLeaf(i, key, value, tree);
+        return await this.insertInLeaf(i, key, value, tree);
       } else {
         // This leaf node is full and must split
         var newRightSibling = await this.splitOffRightSide(),
@@ -1803,13 +1813,13 @@ export class BNode<K, V> {
           i -= (await this.getKeys()).length;
           target = newRightSibling;
         }
-        target.insertInLeaf(i, key, value, tree);
+        await target.insertInLeaf(i, key, value, tree);
         return newRightSibling;
       }
     } else {
       // Key already exists
       if (overwrite !== false) {
-        if (value !== undefined) this.reifyValues();
+        if (value !== undefined) await this.reifyValues();
         // usually this is a no-op, but some users may wish to edit the key
         (await this.getKeys())[i] = key;
         (await this.getValues())[i] = value;
@@ -1820,10 +1830,10 @@ export class BNode<K, V> {
 
   async reifyValues() {
     if ((await this.getValues()) === undefVals)
-      this.setValues(
+      await this.setValues(
         (await this.getValues()).slice(0, (await this.getKeys()).length)
       );
-    return this.getValues();
+    return await this.getValues();
   }
 
   async insertInLeaf(i: index, key: K, value: V, tree: BTree<K, V>) {
@@ -1833,7 +1843,7 @@ export class BNode<K, V> {
       if (value === undefined) {
         return true;
       } else {
-        this.setValues(undefVals.slice(0, (await this.getKeys()).length - 1));
+        await this.setValues(undefVals.slice(0, (await this.getKeys()).length - 1));
       }
     }
     (await this.getValues()).splice(i, 0, value);
@@ -1964,13 +1974,22 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
   constructor(children: BNode<K, V>[], keys?: K[]) {
     children = children.map((child) => nodeToProxy(child));
     if (!keys) {
-      keys = [];
-      for (var i = 0; i < children.length; i++)
-        keys[i] = children[i].maxKeySync();
+      keys = [];      
     }
     super(keys);
     this._children = proxifyNodeArray(children);
   }
+
+  async applyMaxKeys() {
+    const children = await this.getChildren();
+    const keys = await this.getKeys();
+    if(keys.length !==  children.length) {
+      this._keys = [];
+      for (var i = 0; i < children.length; i++)
+          this._keys[i] = await children[i].maxKey();
+    }    
+  }
+
 
   async clone(): Promise<BNode<K, V>> {
     var children = (await this.getChildren()).slice(0);
@@ -1979,6 +1998,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
       children,
       (await this.getKeys()).slice(0)
     );
+    await (clonedNode as BNodeInternal<K, V>).applyMaxKeys();
     return nodeToProxy(clonedNode);
   }
 
@@ -1988,6 +2008,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
       (await this.getChildren()).slice(0),
       (await this.getKeys()).slice(0)
     );
+    await nu.applyMaxKeys();
     for (var i = 0; i < (await nu.getChildren()).length; i++) {
       const children = await nu.getChildren();
       children[i] = await children[i].greedyClone(force);
@@ -2182,7 +2203,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         cmp((await child.getKeys())[0], key) < 0
       ) {
         if (await other.isNodeShared()) c[i - 1] = other = await other.clone();
-        other.takeFromRight(child);
+        await other.takeFromRight(child);
         const keys = await this.getKeys();
         keys[i - 1] = await other.maxKey();
       } else if (
@@ -2206,7 +2227,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     // The child has split and `result` is a new right child... does it fit?
     if ((await this.getKeys()).length < max) {
       // yes
-      this.insert(i + 1, result as BNode<K, V>);
+      await this.insert(i + 1, result as BNode<K, V>);
       return true;
     } else {
       // no, we must split also
@@ -2216,7 +2237,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         target = newRightSibling as BNodeInternal<K, V>;
         i -= (await this.getKeys()).length;
       }
-      target.insert(i + 1, result as BNode<K, V>);
+      await target.insert(i + 1, result as BNode<K, V>);
       return newRightSibling as BNodeInternal<K, V>;
     }
   }
@@ -2238,10 +2259,12 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
   async splitOffRightSide() {
     // assert !this.isShared;
     var half = (await this.getChildren()).length >> 1;
-    return new BNodeInternal<K, V>(
+    const node = new BNodeInternal<K, V>(
       (await this.getChildren()).splice(half),
       (await this.getKeys()).splice(half)
     );
+    await node.applyMaxKeys();
+    return node;
   }
 
   async takeFromRight(rhs: BNode<K, V>) {
