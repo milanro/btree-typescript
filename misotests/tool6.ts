@@ -18,12 +18,21 @@ console.log(db)
 
 console.log(((tree as any)._root as PersistentBNode).computeId());
 
-tree.getRange('miso0000000001', 'miso0000000012').forEach((value, key) => {
+console.log("m - 1");
+tree.getRange('miso0000009999', 'miso0000010009').forEach((value, key) => {
    console.log(key, value);
 });
 
 
+for(let i=10000; i<20000; i++){
+   const nr = i.toString().padStart(10, '0');
+   tree.set('miso'+nr, 'kura' + nr);
+}
 
+console.log("m - 2");
+tree.getRange('miso0000009999', 'miso0000010009').forEach((value, key) => {
+   console.log(key, value);
+});
 
 console.log(((tree as any)._root as PersistentBNode).computeId());
 

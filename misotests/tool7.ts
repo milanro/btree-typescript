@@ -5,6 +5,7 @@ import { PersistentBNode } from "../persistence/util/proxyUtil";
 import { db } from "./tool-config";
 
 console.log('tool4');
+
 setPersistenceManager(new SyncFSPersistenceManager(db));
 
 const tree = new BTree();
@@ -18,16 +19,22 @@ console.log(db)
 
 console.log(((tree as any)._root as PersistentBNode).computeId());
 
-tree.getRange('miso0000000001', 'miso0000000012').forEach((value, key) => {
+console.log("m - 1");
+tree.getRange('miso0000009999', 'miso0000010009').forEach((value, key) => {
    console.log(key, value);
 });
 
 
 
+tree.load('99ff13614eff16b8b3b1925899851311f40878878841eb1fa041b5f686154de4');
+console.log("m - 2");
+tree.getRange('miso0000009999', 'miso0000010009').forEach((value, key) => {
+   console.log(key, value);
+});
 
-console.log(((tree as any)._root as PersistentBNode).computeId());
 
- tree.commit();
+
+ //tree.commit();
 
 
 

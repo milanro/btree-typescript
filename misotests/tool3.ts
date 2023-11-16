@@ -1,11 +1,12 @@
 import BTree from "../b+tree";
 import { setPersistenceManager } from "../persistence/globals/globals";
 import { SyncFSPersistenceManager } from "../persistence/manager/persistenceManager";
+import { db } from "./tool-config";
 
 console.log('tool3');
 
 const tree = new BTree();
-const db = "/tmp1/btree/db7";
+
 
 
 for(let i=0; i<10000; i++){

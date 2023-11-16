@@ -79,7 +79,7 @@ import * as util from 'util';
       }
       else {
         const serialized = this.serializeBNode();
-        console.log('\nserialized', serialized);
+        // console.log('\nserialized', serialized);
         const hash = createHash('sha256').update(serialized).digest('hex');
         return hash;
       }
@@ -122,7 +122,7 @@ import * as util from 'util';
     }
 
     printWholeTree(): void {
-      console.log(this.computeId());
+      // console.log(this.computeId());
       if(this.type===NodeType.BRANCH){
         (this.node as BNodeInternal<any,any>).getChildren().forEach(child => {
           (child as unknown as PersistentBNode).printWholeTree();
