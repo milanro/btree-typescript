@@ -163,15 +163,7 @@ import * as util from 'util';
   function wrapPersistentNode(target: PersistentBNode): NodeProxy {
     return new Proxy<PersistentBNode>(target, {
       set(target, prop, value, receiver) {
-        console.log('set property to node', prop, value);
-        throw new Error('set property to node ' + (prop as string));
-          target.loadSync(getPersistenceManager());
-          const node = target.node;
-          if(node===undefined){
-              throw new Error('node is undefined');
-          }    
-          (node as {[key: string]: any;})[prop as string] = value;
-          return true;      
+        throw new Error('Set property to Node ' + (prop as string));
       },
       get(target, prop, receiver) {
         // console.log('get property from node', prop);
@@ -197,9 +189,7 @@ import * as util from 'util';
                 }
             }
             else {
-              console.log('get attribute from node', prop, nodeMember);
-              throw new Error('get attribute from node ' + (prop as string));
-              return nodeMember;
+              throw new Error('Get Attribute from Node ' + (prop as string));
             }
         }
       },
