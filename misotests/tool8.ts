@@ -4,18 +4,37 @@ import { SyncFSPersistenceManager } from "../persistence/manager/persistenceMana
 import { PersistentBNode } from "../persistence/util/proxyUtil";
 import { db } from "./tool-config";
 
-async function test() {
-   console.log('tool4');
+console.log('tool8');
+let commitId: string;
+setPersistenceManager(new SyncFSPersistenceManager(db));
+let down: string;
+let up: string;
 
-   setPersistenceManager(new SyncFSPersistenceManager(db));
+async function fillData() {
+   const tree = new BTree();
+   for(let i=0; i<10; i++){
+      const nr = i.toString().padStart(10, '0');
+      const key = 'miso' + nr;
+      if(i===0)
+         down = key;
+      if(i===9)
+         up = key;
+      await tree.set(key, 'kura' + nr);
+
+   }
+   commitId = await tree.commit();
+}
+
+async function test() {
+
    
    const tree = new BTree();
-   tree.load('019c8503b0facde198fb54da38fb8eeb9f2a50a8439928fce0ff62b9344003a6');
+   await tree.load(commitId);
    const id = await ((tree as any)._root as PersistentBNode).computeId();
    
    console.log("m - 1");
    
-   const range = await tree.getRange('miso0000009999', 'miso0000010009');
+   const range = await tree.getRange(down , up);
    
    range.forEach((value, key) => {
       console.log(key, value);
@@ -23,16 +42,14 @@ async function test() {
       
    console.log("m - 2");
    
-   
-   tree.load('99ff13614eff16b8b3b1925899851311f40878878841eb1fa041b5f686154de4');
-   console.log("m - 2");
-   (await tree.getRange('miso0000009999', 'miso0000010009')).forEach((value, key) => {
-      console.log(key, value);
-   });
-   console.log("m - 2");
+
 } 
 
-test();
+
+fillData().then(() => {
+   test();
+});
+
 
  //tree.commit();
 

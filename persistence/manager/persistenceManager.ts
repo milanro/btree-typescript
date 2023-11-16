@@ -77,6 +77,7 @@ export class SyncFSPersistenceManager implements PersistenceManager {
         this.createDirectoriesSync(dir);
         const path = this.computePath(dir, id);
         fs.writeFileSync(path, content, 'utf-8');
+        console.log('wrote file: ', path);
     }
 
     containsSync(id: string): boolean {

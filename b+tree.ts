@@ -284,6 +284,7 @@ export default class BTree<K = any, V = any>
       getPersistenceManager()
     );
     console.log("Commited to " + id);
+    return id;
   }
 
   async forEach(
@@ -1690,12 +1691,13 @@ export class BNode<K, V> {
 
   async clone(): Promise<BNode<K, V>> {
     var v = await this.getValues();
-    return nodeToProxy(
+    const cloned =  nodeToProxy(
       new BNode<K, V>(
         (await this.getKeys()).slice(0),
         v === undefVals ? v : v.slice(0)
       )
     );
+    return cloned;
   }
 
   async greedyClone(force?: boolean): Promise<BNode<K, V>> {

@@ -172,6 +172,7 @@ class BTree {
     async commit() {
         const id = await this._root.saveTreeSync((0, globals_1.getPersistenceManager)());
         console.log("Commited to " + id);
+        return id;
     }
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. For compatibility with ES6 Map, the argument order to
@@ -1250,7 +1251,8 @@ class BNode {
     }
     async clone() {
         var v = await this.getValues();
-        return (0, proxyUtil_1.nodeToProxy)(new BNode((await this.getKeys()).slice(0), v === undefVals ? v : v.slice(0)));
+        const cloned = (0, proxyUtil_1.nodeToProxy)(new BNode((await this.getKeys()).slice(0), v === undefVals ? v : v.slice(0)));
+        return cloned;
     }
     async greedyClone(force) {
         return (await this.isNodeShared()) && !force ? this : this.clone();

@@ -67,12 +67,16 @@ export class PersistentBNode {
         children.push(await mapper(child));
       }
     }
-    return {
-      type: this.type!,
-      values: (await node.getValues()).filter((value) => value !== undefined),
-      children,
-      keys: await node.getKeys(),
-    };
+    const values = await node.getValues();
+    const keys = await node.getKeys();
+    const ret = 
+      {
+        type: this.type!,
+        values,
+        children,
+        keys
+      };
+    return ret;
   }
 
   async serializeBNode(): Promise<string> {
@@ -80,7 +84,7 @@ export class PersistentBNode {
     if (node === undefined) {
       throw new Error("node is undefined");
     }
-    return JSON.stringify(this.computeContent());
+    return JSON.stringify(await this.computeContent());
   }
 
   async computeId(): Promise<string> {
@@ -191,6 +195,10 @@ function wrapPersistentNode(target: PersistentBNode): NodeProxy {
           const result = Reflect.get(node!, prop, receiver);
           return result;
         } else {
+          if(prop === 'then') {
+            console.log('then');
+            return undefined;
+          }
           return async function (...args: any[]) {
             await target.loadSync(getPersistenceManager());
             const node = await target.getNode();

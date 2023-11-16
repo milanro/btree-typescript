@@ -131,7 +131,7 @@ export default class BTree<K = any, V = any> {
     get isEmpty(): boolean;
     /** Releases the tree so that its size is 0. */
     clear(): void;
-    commit(): Promise<void>;
+    commit(): Promise<string>;
     forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): Promise<number>;
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. The callback can return {break:R} (where R is any value
