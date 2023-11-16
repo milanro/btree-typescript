@@ -1619,7 +1619,7 @@ class BNodeInternal extends BNode {
         this.getKeys().push.apply(this.getKeys(), rhs.getKeys());
         const rhsChildren = rhs.getChildren();
         this.getChildren().push.apply(this.getChildren(), rhsChildren);
-        if (rhs.isNodeShared() && !this.isNodeShared) {
+        if (rhs.isNodeShared() && !this.isNodeShared()) {
             // All children of a shared node are implicitly shared, and since their new
             // parent is not shared, they must now be explicitly marked as shared.
             for (var i = 0; i < rhsChildren.length; i++)

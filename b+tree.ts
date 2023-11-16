@@ -1836,7 +1836,7 @@ export class BNodeInternal<K,V> extends BNode<K,V> {
     const rhsChildren = (rhs as any as BNodeInternal<K,V>).getChildren();
     this.getChildren().push.apply(this.getChildren(), rhsChildren);
 
-    if (rhs.isNodeShared() && !this.isNodeShared) {
+    if (rhs.isNodeShared() && !this.isNodeShared()) {
       // All children of a shared node are implicitly shared, and since their new
       // parent is not shared, they must now be explicitly marked as shared.
       for (var i = 0; i < rhsChildren.length; i++)
