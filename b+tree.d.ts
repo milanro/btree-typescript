@@ -1,5 +1,5 @@
-import { ISortedMap, ISortedMapF, ISortedSet } from './interfaces';
-export { ISetSource, ISetSink, ISet, ISetF, ISortedSetSource, ISortedSet, ISortedSetF, IMapSource, IMapSink, IMap, IMapF, ISortedMapSource, ISortedMap, ISortedMapF } from './interfaces';
+import { ISortedSet } from "./interfaces";
+export { ISetSource, ISetSink, ISet, ISetF, ISortedSetSource, ISortedSet, ISortedSetF, IMapSource, IMapSink, IMap, IMapF, ISortedMapSource, ISortedMap, ISortedMapF, } from "./interfaces";
 export declare type EditRangeResult<V, R = number> = {
     value?: V;
     break?: R;
@@ -104,7 +104,7 @@ export declare function simpleComparator(a: (number | string)[], b: (number | st
  *
  * @author David Piepgrass
  */
-export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISortedMap<K, V> {
+export default class BTree<K = any, V = any> {
     private _root;
     _size: number;
     _maxNodeSize: number;
@@ -131,8 +131,8 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
     get isEmpty(): boolean;
     /** Releases the tree so that its size is 0. */
     clear(): void;
-    commit(): void;
-    forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): number;
+    commit(): Promise<void>;
+    forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): Promise<number>;
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. The callback can return {break:R} (where R is any value
      *  except undefined) to stop immediately and return R from forEachPair.
@@ -149,14 +149,14 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *        the R value is returned instead. */
     forEachPair<R = number>(callback: (k: K, v: V, counter: number) => {
         break?: R;
-    } | void, initialCounter?: number): R | number;
+    } | void, initialCounter?: number): Promise<number | R>;
     /**
      * Finds a pair in the tree and returns the associated value.
      * @param defaultValue a value to return if the key was not found.
      * @returns the value, or defaultValue if the key was not found.
      * @description Computational complexity: O(log size)
      */
-    get(key: K, defaultValue?: V): V | undefined;
+    get(key: K, defaultValue?: V): Promise<V | undefined>;
     /**
      * Adds or overwrites a key-value pair in the B+ tree.
      * @param key the key is used to determine the sort order of
@@ -171,7 +171,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * as well as the value. This has no effect unless the new key
      * has data that does not affect its sort order.
      */
-    set(key: K, value: V, overwrite?: boolean): boolean;
+    set(key: K, value: V, overwrite?: boolean): Promise<boolean>;
     /**
      * Returns true if the key exists in the B+ tree, false if not.
      * Use get() for best performance; use has() if you need to
@@ -179,20 +179,20 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * @param key Key to detect
      * @description Computational complexity: O(log size)
      */
-    has(key: K): boolean;
+    has(key: K): Promise<boolean>;
     /**
      * Removes a single key-value pair from the B+ tree.
      * @param key Key to find
      * @returns true if a pair was found and removed, false otherwise.
      * @description Computational complexity: O(log size)
      */
-    delete(key: K): boolean;
+    delete(key: K): Promise<boolean>;
     /** Returns a copy of the tree with the specified key set (the value is undefined). */
-    with(key: K): BTree<K, V | undefined>;
+    with(key: K): Promise<BTree<K, V | undefined>>;
     /** Returns a copy of the tree with the specified key-value pair set. */
-    with<V2>(key: K, value: V2, overwrite?: boolean): BTree<K, V | V2>;
+    with<V2>(key: K, value: V2, overwrite?: boolean): Promise<BTree<K, V | V2>>;
     /** Returns a copy of the tree with the specified key-value pairs set. */
-    withPairs<V2>(pairs: [K, V | V2][], overwrite: boolean): BTree<K, V | V2>;
+    withPairs<V2>(pairs: [K, V | V2][], overwrite: boolean): Promise<BTree<K, V | V2>>;
     /** Returns a copy of the tree with the specified keys present.
      *  @param keys The keys to add. If a key is already present in the tree,
      *         neither the existing key nor the existing value is modified.
@@ -200,29 +200,29 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *  existed. Performance note: due to the architecture of this class, all
      *  node(s) leading to existing keys are cloned even if the collection is
      *  ultimately unchanged.
-    */
-    withKeys(keys: K[], returnThisIfUnchanged?: boolean): BTree<K, V | undefined>;
+     */
+    withKeys(keys: K[], returnThisIfUnchanged?: boolean): Promise<BTree<K, V | undefined>>;
     /** Returns a copy of the tree with the specified key removed.
      * @param returnThisIfUnchanged if true, returns this if the key didn't exist.
      *  Performance note: due to the architecture of this class, node(s) leading
      *  to where the key would have been stored are cloned even when the key
      *  turns out not to exist and the collection is unchanged.
      */
-    without(key: K, returnThisIfUnchanged?: boolean): BTree<K, V>;
+    without(key: K, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with the specified keys removed.
      * @param returnThisIfUnchanged if true, returns this if none of the keys
      *  existed. Performance note: due to the architecture of this class,
      *  node(s) leading to where the key would have been stored are cloned
      *  even when the key turns out not to exist.
      */
-    withoutKeys(keys: K[], returnThisIfUnchanged?: boolean): BTree<K, V>;
+    withoutKeys(keys: K[], returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with the specified range of keys removed. */
-    withoutRange(low: K, high: K, includeHigh: boolean, returnThisIfUnchanged?: boolean): BTree<K, V>;
+    withoutRange(low: K, high: K, includeHigh: boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with pairs removed whenever the callback
      *  function returns false. `where()` is a synonym for this method. */
-    filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): BTree<K, V>;
+    filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with all values altered by a callback function. */
-    mapValues<R>(callback: (v: V, k: K, counter: number) => R): BTree<K, R>;
+    mapValues<R>(callback: (v: V, k: K, counter: number) => R): Promise<BTree<K, R>>;
     /** Performs a reduce operation like the `reduce` method of `Array`.
      *  It is used to combine all pairs into a single value, or perform
      *  conversions. `reduce` is best understood by example. For example,
@@ -235,8 +235,8 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *
      *  **Note**: the same array is sent to the callback on every iteration.
      */
-    reduce<R>(callback: (previous: R, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue: R): R;
-    reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R): R | undefined;
+    reduce<R>(callback: (previous: R, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue: R): Promise<R>;
+    reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R): Promise<R | undefined>;
     /** Returns an iterator that provides items in order (ascending order if
      *  the collection's comparator uses ascending order, as is the default.)
      *  @param lowestKey First key to be iterated, or undefined to start at
@@ -245,7 +245,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *  @param reusedArray Optional array used repeatedly to store key-value
      *         pairs, to avoid creating a new array on every iteration.
      */
-    entries(lowestKey?: K, reusedArray?: (K | V)[]): IterableIterator<[K, V]>;
+    entries(lowestKey?: K, reusedArray?: (K | V)[]): Promise<IterableIterator<[K, V]>>;
     /** Returns an iterator that provides items in reversed order.
      *  @param highestKey Key at which to start iterating, or undefined to
      *         start at maxKey(). If the specified key doesn't exist then iteration
@@ -255,7 +255,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *  @param skipHighest Iff this flag is true and the highestKey exists in the
      *         collection, the pair matching highestKey is skipped, not iterated.
      */
-    entriesReversed(highestKey?: K, reusedArray?: (K | V)[], skipHighest?: boolean): IterableIterator<[K, V]>;
+    entriesReversed(highestKey?: K, reusedArray?: (K | V)[], skipHighest?: boolean): Promise<IterableIterator<[K, V]>>;
     private findPath;
     /**
      * Computes the differences between `this` and `other`.
@@ -276,7 +276,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
         break?: R;
     } | void, different?: (k: K, vThis: V, vOther: V) => {
         break?: R;
-    } | void): R | undefined;
+    } | void): Promise<R | undefined>;
     private static finishCursorWalk;
     private static stepToEnd;
     private static makeDiffCursor;
@@ -295,16 +295,16 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
     private static compare;
     /** Returns a new iterator for iterating the keys of each pair in ascending order.
      *  @param firstKey: Minimum key to include in the output. */
-    keys(firstKey?: K): IterableIterator<K>;
+    keys(firstKey?: K): Promise<IterableIterator<K>>;
     /** Returns a new iterator for iterating the values of each pair in order by key.
      *  @param firstKey: Minimum key whose associated value is included in the output. */
-    values(firstKey?: K): IterableIterator<V>;
+    values(firstKey?: K): Promise<IterableIterator<V>>;
     /** Returns the maximum number of children/values before nodes will split. */
     get maxNodeSize(): number;
     /** Gets the lowest key in the tree. Complexity: O(log size) */
-    minKey(): K | undefined;
+    minKey(): Promise<K | undefined>;
     /** Gets the highest key in the tree. Complexity: O(1) */
-    maxKey(): K | undefined;
+    maxKey(): Promise<K | undefined>;
     /** Quickly clones the tree by marking the root node as shared.
      *  Both copies remain editable. When you modify either copy, any
      *  nodes that are shared (or potentially shared) between the two
@@ -316,41 +316,41 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *  additional nodes as shared.
      *  @param force Clone all nodes, even shared ones.
      */
-    greedyClone(force?: boolean): BTree<K, V>;
+    greedyClone(force?: boolean): Promise<BTree<K, V>>;
     /** Gets an array filled with the contents of the tree, sorted by key */
-    toArray(maxLength?: number): [K, V][];
+    toArray(maxLength?: number): Promise<[K, V][]>;
     /** Gets an array of all keys, sorted */
-    keysArray(): K[];
+    keysArray(): Promise<K[]>;
     /** Gets an array of all values, sorted by key */
-    valuesArray(): V[];
+    valuesArray(): Promise<V[]>;
     /** Gets a string representing the tree's data based on toArray(). */
     toString(): string;
     /** Stores a key-value pair only if the key doesn't already exist in the tree.
      * @returns true if a new key was added
-    */
-    setIfNotPresent(key: K, value: V): boolean;
+     */
+    etIfNotPresent(key: K, value: V): Promise<boolean>;
     /** Returns the next pair whose key is larger than the specified key (or undefined if there is none).
      * If key === undefined, this function returns the lowest pair.
      * @param key The key to search for.
      * @param reusedArray Optional array used repeatedly to store key-value pairs, to
      * avoid creating a new array on every iteration.
      */
-    nextHigherPair(key: K | undefined, reusedArray?: [K, V]): [K, V] | undefined;
+    nextHigherPair(key: K | undefined, reusedArray?: [K, V]): Promise<[K, V] | undefined>;
     /** Returns the next key larger than the specified key, or undefined if there is none.
      *  Also, nextHigherKey(undefined) returns the lowest key.
      */
-    nextHigherKey(key: K | undefined): K | undefined;
+    nextHigherKey(key: K | undefined): Promise<K | undefined>;
     /** Returns the next pair whose key is smaller than the specified key (or undefined if there is none).
      *  If key === undefined, this function returns the highest pair.
      * @param key The key to search for.
      * @param reusedArray Optional array used repeatedly to store key-value pairs, to
      *        avoid creating a new array each time you call this method.
      */
-    nextLowerPair(key: K | undefined, reusedArray?: [K, V]): [K, V] | undefined;
+    nextLowerPair(key: K | undefined, reusedArray?: [K, V]): Promise<[K, V] | undefined>;
     /** Returns the next key smaller than the specified key, or undefined if there is none.
      *  Also, nextLowerKey(undefined) returns the highest key.
      */
-    nextLowerKey(key: K | undefined): K | undefined;
+    nextLowerKey(key: K | undefined): Promise<K | undefined>;
     /** Returns the key-value pair associated with the supplied key if it exists
      *  or the pair associated with the next lower pair otherwise. If there is no
      *  next lower pair, undefined is returned.
@@ -358,7 +358,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * @param reusedArray Optional array used repeatedly to store key-value pairs, to
      *        avoid creating a new array each time you call this method.
      * */
-    getPairOrNextLower(key: K, reusedArray?: [K, V]): [K, V] | undefined;
+    getPairOrNextLower(key: K, reusedArray?: [K, V]): Promise<[K, V] | undefined>;
     /** Returns the key-value pair associated with the supplied key if it exists
      *  or the pair associated with the next lower pair otherwise. If there is no
      *  next lower pair, undefined is returned.
@@ -366,11 +366,11 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * @param reusedArray Optional array used repeatedly to store key-value pairs, to
      *        avoid creating a new array each time you call this method.
      * */
-    getPairOrNextHigher(key: K, reusedArray?: [K, V]): [K, V] | undefined;
+    getPairOrNextHigher(key: K, reusedArray?: [K, V]): Promise<[K, V] | undefined>;
     /** Edits the value associated with a key in the tree, if it already exists.
      * @returns true if the key existed, false if not.
-    */
-    changeIfPresent(key: K, value: V): boolean;
+     */
+    changeIfPresent(key: K, value: V): Promise<boolean>;
     /**
      * Builds an array of pairs from the specified range of keys, sorted by key.
      * Each returned pair is also an array: pair[0] is the key, pair[1] is the value.
@@ -383,7 +383,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *                  the array reaches this size.
      * @description Computational complexity: O(result.length + log size)
      */
-    getRange(low: K, high: K, includeHigh?: boolean, maxLength?: number): [K, V][];
+    getRange(low: K, high: K, includeHigh?: boolean, maxLength?: number): Promise<[K, V][]>;
     /** Adds all pairs from a list of key-value pairs.
      * @param pairs Pairs to add to this tree. If there are duplicate keys,
      *        later pairs currently overwrite earlier ones (e.g. [[0,1],[0,7]]
@@ -393,8 +393,8 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * @returns The number of pairs added to the collection.
      * @description Computational complexity: O(pairs.length * log(size + pairs.length))
      */
-    setPairs(pairs: [K, V][], overwrite?: boolean): number;
-    forRange(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => void, initialCounter?: number): number;
+    setPairs(pairs: [K, V][], overwrite?: boolean): Promise<number>;
+    forRange(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => void, initialCounter?: number): Promise<number>;
     /**
      * Scans and potentially modifies values for a subsequence of keys.
      * Note: the callback `onFound` should ideally be a pure function.
@@ -424,9 +424,9 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *   nodes are copied before `onFound` is called. This takes O(n) time
      *   where n is proportional to the amount of shared data scanned.
      */
-    editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): R | number;
+    editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<number | R>;
     /** Same as `editRange` except that the callback is called for all pairs. */
-    editAll<R = V>(onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): R | number;
+    editAll<R = V>(onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<R | number>;
     /**
      * Removes a range of key-value pairs from the B+ tree.
      * @param low The first key scanned will be greater than or equal to `low`.
@@ -435,12 +435,12 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      * @returns The number of key-value pairs that were deleted.
      * @description Computational complexity: O(log size + number of items deleted)
      */
-    deleteRange(low: K, high: K, includeHigh: boolean): number;
+    deleteRange(low: K, high: K, includeHigh: boolean): Promise<number>;
     /** Deletes a series of keys from the collection. */
-    deleteKeys(keys: K[]): number;
+    deleteKeys(keys: K[]): Promise<number>;
     /** Gets the height of the tree: the number of internal nodes between the
      *  BTree object and its leaf nodes (zero if there are no internal nodes). */
-    get height(): number;
+    getHeight(): Promise<number>;
     /** Makes the object read-only to ensure it is not accidentally modified.
      *  Freezing does not have to be permanent; unfreeze() reverses the effect.
      *  This is accomplished by replacing mutator functions with a function
@@ -457,7 +457,7 @@ export default class BTree<K = any, V = any> implements ISortedMapF<K, V>, ISort
      *  Computational complexity: O(number of nodes), i.e. O(size). This method
      *  skips the most expensive test - whether all keys are sorted - but it
      *  does check that maxKey() of the children of internal nodes are sorted. */
-    checkValid(): void;
+    checkValid(): Promise<void>;
 }
 /** A TypeScript helper function that simply returns its argument, typed as
  *  `ISortedSet<K>` if the BTree implements it, as it does if `V extends undefined`.
@@ -469,76 +469,77 @@ export declare function asSet<K, V>(btree: BTree<K, V>): undefined extends V ? I
 export declare class BNode<K, V> {
     readonly _keys: K[];
     _values: V[];
-    getKeys(): K[];
-    getValues(): V[];
-    setValues(v: V[]): void;
+    getKeys(): Promise<K[]>;
+    getValues(): Promise<V[]>;
+    setValues(v: V[]): Promise<void>;
     _isShared: true | undefined;
-    isNodeShared(): boolean;
-    setShared(value: boolean): void;
-    isLeafNode(): boolean;
+    isNodeShared(): Promise<boolean>;
+    setShared(value: boolean): Promise<void>;
+    isLeafNode(): Promise<boolean>;
     constructor(keys?: K[], values?: V[]);
-    maxKey(): K;
-    indexOf(key: K, failXor: number, cmp: (a: K, b: K) => number): index;
-    minKey(): K | undefined;
-    minPair(reusedArray: [K, V]): [K, V] | undefined;
-    maxPair(reusedArray: [K, V]): [K, V] | undefined;
-    clone(): BNode<K, V>;
-    greedyClone(force?: boolean): BNode<K, V>;
-    get(key: K, defaultValue: V | undefined, tree: BTree<K, V>): V | undefined;
-    getPairOrNextLower(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): [K, V] | undefined;
-    getPairOrNextHigher(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): [K, V] | undefined;
-    checkValid(depth: number, tree: BTree<K, V>, baseIndex: number): number;
-    set(key: K, value: V, overwrite: boolean | undefined, tree: BTree<K, V>): boolean | BNode<K, V>;
-    reifyValues(): V[];
-    insertInLeaf(i: index, key: K, value: V, tree: BTree<K, V>): boolean;
-    takeFromRight(rhs: BNode<K, V>): void;
-    takeFromLeft(lhs: BNode<K, V>): void;
-    splitOffRightSide(): BNode<K, V>;
-    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): EditRangeResult<V, R> | number;
+    maxKey(): Promise<K>;
+    maxKeySync(): K;
+    indexOf(key: K, failXor: number, cmp: (a: K, b: K) => number): Promise<index>;
+    minKey(): Promise<K | undefined>;
+    minPair(reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    maxPair(reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    clone(): Promise<BNode<K, V>>;
+    greedyClone(force?: boolean): Promise<BNode<K, V>>;
+    get(key: K, defaultValue: V | undefined, tree: BTree<K, V>): Promise<V | undefined>;
+    getPairOrNextLower(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    getPairOrNextHigher(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    checkValid(depth: number, tree: BTree<K, V>, baseIndex: number): Promise<number>;
+    set(key: K, value: V, overwrite: boolean | undefined, tree: BTree<K, V>): Promise<boolean | BNode<K, V>>;
+    reifyValues(): Promise<V[]>;
+    insertInLeaf(i: index, key: K, value: V, tree: BTree<K, V>): Promise<boolean>;
+    takeFromRight(rhs: BNode<K, V>): Promise<void>;
+    takeFromLeft(lhs: BNode<K, V>): Promise<void>;
+    splitOffRightSide(): Promise<BNode<K, V>>;
+    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): Promise<EditRangeResult<V, R> | number>;
     /** Adds entire contents of right-hand sibling (rhs is left unchanged) */
-    mergeSibling(rhs: BNode<K, V>, _: number): void;
+    mergeSibling(rhs: BNode<K, V>, _: number): Promise<void>;
 }
 /** Internal node (non-leaf node) ********************************************/
 export declare class BNodeInternal<K, V> extends BNode<K, V> {
     readonly _children: BNode<K, V>[];
-    getChildren(): BNode<K, V>[];
+    getChildren(): Promise<BNode<K, V>[]>;
     /**
      * This does not mark `children` as shared, so it is the responsibility of the caller
      * to ensure children are either marked shared, or aren't included in another tree.
      */
     constructor(children: BNode<K, V>[], keys?: K[]);
-    clone(): BNode<K, V>;
-    greedyClone(force?: boolean): BNode<K, V>;
-    minKey(): K | undefined;
-    minPair(reusedArray: [K, V]): [K, V] | undefined;
-    maxPair(reusedArray: [K, V]): [K, V] | undefined;
-    get(key: K, defaultValue: V | undefined, tree: BTree<K, V>): V | undefined;
-    getPairOrNextLower(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): [K, V] | undefined;
-    getPairOrNextHigher(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): [K, V] | undefined;
-    checkValid(depth: number, tree: BTree<K, V>, baseIndex: number): number;
-    set(key: K, value: V, overwrite: boolean | undefined, tree: BTree<K, V>): boolean | BNodeInternal<K, V>;
+    clone(): Promise<BNode<K, V>>;
+    greedyClone(force?: boolean): Promise<BNode<K, V>>;
+    minKey(): Promise<K | undefined>;
+    minPair(reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    maxPair(reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    get(key: K, defaultValue: V | undefined, tree: BTree<K, V>): Promise<V | undefined>;
+    getPairOrNextLower(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    getPairOrNextHigher(key: K, compare: (a: K, b: K) => number, inclusive: boolean, reusedArray: [K, V]): Promise<[K, V] | undefined>;
+    checkValid(depth: number, tree: BTree<K, V>, baseIndex: number): Promise<number>;
+    set(key: K, value: V, overwrite: boolean | undefined, tree: BTree<K, V>): Promise<boolean | BNodeInternal<K, V>>;
     /**
      * Inserts `child` at index `i`.
      * This does not mark `child` as shared, so it is the responsibility of the caller
      * to ensure that either child is marked shared, or it is not included in another tree.
      */
-    insert(i: index, child: BNode<K, V>): void;
+    insert(i: index, child: BNode<K, V>): Promise<void>;
     /**
      * Split this node.
      * Modifies this to remove the second half of the items, returning a separate node containing them.
      */
-    splitOffRightSide(): BNodeInternal<K, V>;
-    takeFromRight(rhs: BNode<K, V>): void;
-    takeFromLeft(lhs: BNode<K, V>): void;
-    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): EditRangeResult<V, R> | number;
+    splitOffRightSide(): Promise<BNodeInternal<K, V>>;
+    takeFromRight(rhs: BNode<K, V>): Promise<void>;
+    takeFromLeft(lhs: BNode<K, V>): Promise<void>;
+    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): Promise<number | EditRangeResult<V, R>>;
     /** Merges child i with child i+1 if their combined size is not too large */
-    tryMerge(i: index, maxSize: number): boolean;
+    tryMerge(i: index, maxSize: number): Promise<boolean>;
     /**
      * Move children from `rhs` into this.
      * `rhs` must be part of this tree, and be removed from it after this call
      * (otherwise isShared for its children could be incorrect).
      */
-    mergeSibling(rhs: BNode<K, V>, maxNodeSize: number): void;
+    mergeSibling(rhs: BNode<K, V>, maxNodeSize: number): Promise<void>;
 }
 /** A BTree frozen in the empty state. */
 export declare const EmptyBTree: BTree<any, any>;
