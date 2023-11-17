@@ -274,20 +274,20 @@ export default class BTree<K = any, V = any>
   // ES6 Map<K,V> methods /////////////////////////////////////////////////////
 
   /** Gets the number of key-value pairs in the tree. */
-  get size() {
+  async getSize() {
     return this._size;
   }
   /** Gets the number of key-value pairs in the tree. */
-  get length() {
+  async getLength() {
     return this._size;
   }
   /** Returns true iff the tree contains no key-value pairs. */
-  get isEmpty() {
+  async isEmpty() {
     return this._size === 0;
   }
 
   /** Releases the tree so that its size is 0. */
-  clear() {
+  async clear() {
     this._root = nodeToProxy(EmptyLeaf as BNode<K, V>);
     this._size = 0;
   }
@@ -404,7 +404,7 @@ export default class BTree<K = any, V = any>
   // Clone-mutators ///////////////////////////////////////////////////////////
 
   /** Returns a copy of the tree with the specified key set (the value is undefined). */
-  with(key: K): Promise<BTree<K, V | undefined>>;
+  async with(key: K): Promise<BTree<K, V | undefined>>;
   /** Returns a copy of the tree with the specified key-value pair set. */
   async with<V2>(key: K, value: V2, overwrite?: boolean): Promise<BTree<K, V | V2>>;
   async with<V2>(
@@ -412,13 +412,13 @@ export default class BTree<K = any, V = any>
     value?: V2,
     overwrite?: boolean
   ): Promise<BTree<K, V | V2 | undefined>> {
-    let nu = this.clone() as BTree<K, V | V2 | undefined>;
+    let nu = await this.clone() as BTree<K, V | V2 | undefined>;
     return await nu.set(key, value, overwrite) || overwrite ? nu : this;
   }
 
   /** Returns a copy of the tree with the specified key-value pairs set. */
   async withPairs<V2>(pairs: [K, V | V2][], overwrite: boolean): Promise<BTree<K, V | V2>> {
-    let nu = this.clone() as BTree<K, V | V2>;
+    let nu = await this.clone() as BTree<K, V | V2>;
     return await nu.setPairs(pairs, overwrite) !== 0 || overwrite ? nu : this;
   }
 
@@ -434,7 +434,7 @@ export default class BTree<K = any, V = any>
     keys: K[],
     returnThisIfUnchanged?: boolean
   ): Promise<BTree<K, V | undefined>> {
-    let nu = this.clone() as BTree<K, V | undefined>,
+    let nu = await this.clone() as BTree<K, V | undefined>,
       changed = false;
     for (var i = 0; i < keys.length; i++)
       changed = await nu.set(keys[i], undefined, false) || changed;
@@ -448,7 +448,7 @@ export default class BTree<K = any, V = any>
    *  turns out not to exist and the collection is unchanged.
    */
   async without(key: K, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
-    return this.withoutRange(key, key, true, returnThisIfUnchanged);
+    return await this.withoutRange(key, key, true, returnThisIfUnchanged);
   }
 
   /** Returns a copy of the tree with the specified keys removed.
@@ -458,7 +458,7 @@ export default class BTree<K = any, V = any>
    *  even when the key turns out not to exist.
    */
   async withoutKeys(keys: K[], returnThisIfUnchanged?: boolean): Promise<BTree<K, V>> {
-    let nu = this.clone();
+    let nu = await this.clone();
     return await nu.deleteKeys(keys) || !returnThisIfUnchanged ? nu : this;
   }
 
@@ -469,7 +469,7 @@ export default class BTree<K = any, V = any>
     includeHigh: boolean,
     returnThisIfUnchanged?: boolean
   ): Promise<BTree<K, V>> {
-    let nu = this.clone();
+    let nu = await this.clone();
     if (await nu.deleteRange(low, high, includeHigh) === 0 && returnThisIfUnchanged)
       return this;
     return nu;
@@ -481,9 +481,9 @@ export default class BTree<K = any, V = any>
     callback: (k: K, v: V, counter: number) => boolean,
     returnThisIfUnchanged?: boolean
   ): Promise<BTree<K, V>> {
-    var nu = this.greedyClone();
+    var nu = await this.greedyClone();
     var del: any;
-    (await nu).editAll((k, v, i) => {
+    await (nu).editAll((k, v, i) => {
       if (!callback(k, v, i)) return (del = Delete);
     });
     if (!del && returnThisIfUnchanged) return this;
@@ -491,10 +491,10 @@ export default class BTree<K = any, V = any>
   }
 
   /** Returns a copy of the tree with all values altered by a callback function. */
-  async mapValues<R>(callback: (v: V, k: K, counter: number) => R): Promise<BTree<K, R>> {
+  async mapValues<R>(callback:  (v: V, k: K, counter: number) => R): Promise<BTree<K, R>> {
     var tmp = {} as { value: R };
-    var nu = this.greedyClone();
-    (await nu).editAll((k, v, i) => {
+    var nu = await this.greedyClone();
+    await nu.editAll((k, v, i) => {
       return (tmp.value = callback(v, k, i)), tmp as any;
     });
     return nu as any as BTree<K, R>;
@@ -753,9 +753,9 @@ export default class BTree<K = any, V = any>
     }
 
     if (this.isEmpty || other.isEmpty) {
-      if (this.isEmpty && other.isEmpty) return undefined;
+      if (await this.isEmpty() && await other.isEmpty()) return undefined;
       // If one tree is empty, everything will be an onlyThis/onlyOther.
-      if (this.isEmpty)
+      if (await this.isEmpty())
         return onlyOther === undefined
           ? undefined
           : BTree.stepToEnd(await BTree.makeDiffCursor(other), onlyOther);
@@ -1078,7 +1078,7 @@ export default class BTree<K = any, V = any>
   // Additional methods ///////////////////////////////////////////////////////
 
   /** Returns the maximum number of children/values before nodes will split. */
-  get maxNodeSize() {
+  async maxNodeSize() {
     return this._maxNodeSize;
   }
 
@@ -1097,7 +1097,7 @@ export default class BTree<K = any, V = any>
    *  nodes that are shared (or potentially shared) between the two
    *  copies are cloned so that the changes do not affect other copies.
    *  This is known as copy-on-write behavior, or "lazy copying". */
-  clone(): BTree<K, V> {
+  async clone(): Promise<BTree<K, V>> {
     this._root.setShared(true);
     var result = new BTree<K, V>(undefined, this._compare, this._maxNodeSize);
     result._root = this._root;
@@ -1121,14 +1121,14 @@ export default class BTree<K = any, V = any>
   async toArray(maxLength: number = 0x7fffffff): Promise<[K, V][]> {
     let min = await this.minKey(),
       max = await this.maxKey();
-    if (min !== undefined) return this.getRange(min, max!, true, maxLength);
+    if (min !== undefined) return await this.getRange(min, max!, true, maxLength);
     return [];
   }
 
   /** Gets an array of all keys, sorted */
   async keysArray() {
     var results: K[] = [];
-    this._root.forRange(
+    await this._root.forRange(
       (await this.minKey())!,
       (await this.maxKey())!,
       true,
@@ -1145,7 +1145,7 @@ export default class BTree<K = any, V = any>
   /** Gets an array of all values, sorted by key */
   async valuesArray() {
     var results: V[] = [];
-    this._root.forRange(
+    await this._root.forRange(
       (await this.minKey())!,
       (await this.maxKey())!,
       true,
@@ -1306,7 +1306,7 @@ export default class BTree<K = any, V = any>
     return added;
   }
 
-  forRange(
+  async forRange(
     low: K,
     high: K,
     includeHigh: boolean,
@@ -1498,7 +1498,7 @@ export default class BTree<K = any, V = any>
   }
 
   /** Returns true if the tree appears to be frozen. */
-  get isFrozen() {
+  async isFrozen() {
     return this.hasOwnProperty("editRange");
   }
 
@@ -1510,11 +1510,11 @@ export default class BTree<K = any, V = any>
   async checkValid() {
     var size = this._root.checkValid(0, this, 0);
     check(
-      (await size) === this.size,
+      (await size) === await this.getSize(),
       "size mismatch: counted ",
       size,
       "but stored",
-      this.size
+      await this.getSize()
     );
   }
 }
@@ -2025,7 +2025,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
   }
 
   async maxPair(reusedArray: [K, V]): Promise<[K, V] | undefined> {
-    return (await this.getChildren())[
+    return await (await this.getChildren())[
       (await this.getChildren()).length - 1
     ].maxPair(reusedArray);
   }
@@ -2038,7 +2038,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     var i = await this.indexOf(key, 0, tree._compare),
       children = await this.getChildren();
     return i < children.length
-      ? children[i].get(key, defaultValue, tree)
+      ? await children[i].get(key, defaultValue, tree)
       : undefined;
   }
 
@@ -2051,7 +2051,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     var i = await this.indexOf(key, 0, compare),
       children = await this.getChildren();
     if (i >= children.length) return this.maxPair(reusedArray);
-    const result = children[i].getPairOrNextLower(
+    const result = await children[i].getPairOrNextLower(
       key,
       compare,
       inclusive,
@@ -2156,7 +2156,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     // 2020/08: BTree doesn't always avoid grossly undersized nodes,
     // but AFAIK such nodes are pretty harmless, so accept them.
     let toofew = childSize === 0; // childSize < (tree.maxNodeSize >> 1)*cL;
-    if (toofew || childSize > tree.maxNodeSize * cL)
+    if (toofew || childSize > await tree.maxNodeSize() * cL)
       check(
         false,
         toofew ? "too few" : "too many",
@@ -2314,7 +2314,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     if (!editMode) {
       // Simple case
       for (; i <= iHigh; i++) {
-        var result = children[i].forRange(
+        var result = await children[i].forRange(
           low,
           high,
           includeHigh,
@@ -2331,7 +2331,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
         for (; i <= iHigh; i++) {
           if (await children[i].isNodeShared())
             children[i] = await children[i].clone();
-          var result = children[i].forRange(
+          var result = await children[i].forRange(
             low,
             high,
             includeHigh,

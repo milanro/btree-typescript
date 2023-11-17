@@ -126,13 +126,13 @@ export default class BTree<K = any, V = any> {
     applyEntries(): Promise<void>;
     load(id: string): void;
     /** Gets the number of key-value pairs in the tree. */
-    get size(): number;
+    getSize(): Promise<number>;
     /** Gets the number of key-value pairs in the tree. */
-    get length(): number;
+    getLength(): Promise<number>;
     /** Returns true iff the tree contains no key-value pairs. */
-    get isEmpty(): boolean;
+    isEmpty(): Promise<boolean>;
     /** Releases the tree so that its size is 0. */
-    clear(): void;
+    clear(): Promise<void>;
     commit(): Promise<string>;
     forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): Promise<number>;
     /** Runs a function for each key-value pair, in order from smallest to
@@ -302,7 +302,7 @@ export default class BTree<K = any, V = any> {
      *  @param firstKey: Minimum key whose associated value is included in the output. */
     values(firstKey?: K): Promise<IterableIterator<V>>;
     /** Returns the maximum number of children/values before nodes will split. */
-    get maxNodeSize(): number;
+    maxNodeSize(): Promise<number>;
     /** Gets the lowest key in the tree. Complexity: O(log size) */
     minKey(): Promise<K | undefined>;
     /** Gets the highest key in the tree. Complexity: O(1) */
@@ -312,7 +312,7 @@ export default class BTree<K = any, V = any> {
      *  nodes that are shared (or potentially shared) between the two
      *  copies are cloned so that the changes do not affect other copies.
      *  This is known as copy-on-write behavior, or "lazy copying". */
-    clone(): BTree<K, V>;
+    clone(): Promise<BTree<K, V>>;
     /** Performs a greedy clone, immediately duplicating any nodes that are
      *  not currently marked as shared, in order to avoid marking any
      *  additional nodes as shared.
@@ -453,7 +453,7 @@ export default class BTree<K = any, V = any> {
     /** Ensures mutations are allowed, reversing the effect of freeze(). */
     unfreeze(): void;
     /** Returns true if the tree appears to be frozen. */
-    get isFrozen(): boolean;
+    isFrozen(): Promise<boolean>;
     /** Scans the tree for signs of serious bugs (e.g. this.size doesn't match
      *  number of elements, internal nodes not caching max element properly...)
      *  Computational complexity: O(number of nodes), i.e. O(size). This method

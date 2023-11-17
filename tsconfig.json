@@ -16,5 +16,5 @@
     "downlevelIteration": false, // for-of loops and yield statement in ES5
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "tests", "b+tree.test.ts"],
+  "exclude": ["node_modules", "tests", "b+tree1.test.ts"],
 }

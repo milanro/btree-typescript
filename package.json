@@ -5,7 +5,7 @@
   "main": "b+tree.js",
   "typings": "b+tree",
   "scripts": {
-    "test": "tsc && echo //ts-jest-issue-657 >interfaces.js && jest --runInBand ",
+    "test": "tsc && echo //ts-jest-issue-657 >interfaces.js && jest",
     "build": "tsc",
     "prepare": "npm run build",
     "safePublish": "npm run build && testpack && npm publish",

@@ -12,7 +12,7 @@ let up: string;
 
 async function fillData() {
    const tree = new BTree();
-   for(let i=0; i<10; i++){
+   for(let i=0; i<1000000; i++){
       const nr = i.toString().padStart(10, '0');
       const key = 'miso' + nr;
       if(i===0)

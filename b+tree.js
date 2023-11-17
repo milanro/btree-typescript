@@ -157,19 +157,19 @@ class BTree {
     /////////////////////////////////////////////////////////////////////////////
     // ES6 Map<K,V> methods /////////////////////////////////////////////////////
     /** Gets the number of key-value pairs in the tree. */
-    get size() {
+    async getSize() {
         return this._size;
     }
     /** Gets the number of key-value pairs in the tree. */
-    get length() {
+    async getLength() {
         return this._size;
     }
     /** Returns true iff the tree contains no key-value pairs. */
-    get isEmpty() {
+    async isEmpty() {
         return this._size === 0;
     }
     /** Releases the tree so that its size is 0. */
-    clear() {
+    async clear() {
         this._root = (0, proxyUtil_1.nodeToProxy)(EmptyLeaf);
         this._size = 0;
     }
@@ -263,12 +263,12 @@ class BTree {
         return await this.editRange(key, key, true, DeleteRange) !== 0;
     }
     async with(key, value, overwrite) {
-        let nu = this.clone();
+        let nu = await this.clone();
         return await nu.set(key, value, overwrite) || overwrite ? nu : this;
     }
     /** Returns a copy of the tree with the specified key-value pairs set. */
     async withPairs(pairs, overwrite) {
-        let nu = this.clone();
+        let nu = await this.clone();
         return await nu.setPairs(pairs, overwrite) !== 0 || overwrite ? nu : this;
     }
     /** Returns a copy of the tree with the specified keys present.
@@ -280,7 +280,7 @@ class BTree {
      *  ultimately unchanged.
      */
     async withKeys(keys, returnThisIfUnchanged) {
-        let nu = this.clone(), changed = false;
+        let nu = await this.clone(), changed = false;
         for (var i = 0; i < keys.length; i++)
             changed = await nu.set(keys[i], undefined, false) || changed;
         return returnThisIfUnchanged && !changed ? this : nu;
@@ -292,7 +292,7 @@ class BTree {
      *  turns out not to exist and the collection is unchanged.
      */
     async without(key, returnThisIfUnchanged) {
-        return this.withoutRange(key, key, true, returnThisIfUnchanged);
+        return await this.withoutRange(key, key, true, returnThisIfUnchanged);
     }
     /** Returns a copy of the tree with the specified keys removed.
      * @param returnThisIfUnchanged if true, returns this if none of the keys
@@ -301,12 +301,12 @@ class BTree {
      *  even when the key turns out not to exist.
      */
     async withoutKeys(keys, returnThisIfUnchanged) {
-        let nu = this.clone();
+        let nu = await this.clone();
         return await nu.deleteKeys(keys) || !returnThisIfUnchanged ? nu : this;
     }
     /** Returns a copy of the tree with the specified range of keys removed. */
     async withoutRange(low, high, includeHigh, returnThisIfUnchanged) {
-        let nu = this.clone();
+        let nu = await this.clone();
         if (await nu.deleteRange(low, high, includeHigh) === 0 && returnThisIfUnchanged)
             return this;
         return nu;
@@ -314,9 +314,9 @@ class BTree {
     /** Returns a copy of the tree with pairs removed whenever the callback
      *  function returns false. `where()` is a synonym for this method. */
     async filter(callback, returnThisIfUnchanged) {
-        var nu = this.greedyClone();
+        var nu = await this.greedyClone();
         var del;
-        (await nu).editAll((k, v, i) => {
+        await (nu).editAll((k, v, i) => {
             if (!callback(k, v, i))
                 return (del = Delete);
         });
@@ -327,8 +327,8 @@ class BTree {
     /** Returns a copy of the tree with all values altered by a callback function. */
     async mapValues(callback) {
         var tmp = {};
-        var nu = this.greedyClone();
-        (await nu).editAll((k, v, i) => {
+        var nu = await this.greedyClone();
+        await nu.editAll((k, v, i) => {
             return (tmp.value = callback(v, k, i)), tmp;
         });
         return nu;
@@ -515,10 +515,10 @@ class BTree {
             throw new Error("Tree comparators are not the same.");
         }
         if (this.isEmpty || other.isEmpty) {
-            if (this.isEmpty && other.isEmpty)
+            if (await this.isEmpty() && await other.isEmpty())
                 return undefined;
             // If one tree is empty, everything will be an onlyThis/onlyOther.
-            if (this.isEmpty)
+            if (await this.isEmpty())
                 return onlyOther === undefined
                     ? undefined
                     : BTree.stepToEnd(await BTree.makeDiffCursor(other), onlyOther);
@@ -773,7 +773,7 @@ class BTree {
     /////////////////////////////////////////////////////////////////////////////
     // Additional methods ///////////////////////////////////////////////////////
     /** Returns the maximum number of children/values before nodes will split. */
-    get maxNodeSize() {
+    async maxNodeSize() {
         return this._maxNodeSize;
     }
     /** Gets the lowest key in the tree. Complexity: O(log size) */
@@ -789,7 +789,7 @@ class BTree {
      *  nodes that are shared (or potentially shared) between the two
      *  copies are cloned so that the changes do not affect other copies.
      *  This is known as copy-on-write behavior, or "lazy copying". */
-    clone() {
+    async clone() {
         this._root.setShared(true);
         var result = new BTree(undefined, this._compare, this._maxNodeSize);
         result._root = this._root;
@@ -811,13 +811,13 @@ class BTree {
     async toArray(maxLength = 0x7fffffff) {
         let min = await this.minKey(), max = await this.maxKey();
         if (min !== undefined)
-            return this.getRange(min, max, true, maxLength);
+            return await this.getRange(min, max, true, maxLength);
         return [];
     }
     /** Gets an array of all keys, sorted */
     async keysArray() {
         var results = [];
-        this._root.forRange((await this.minKey()), (await this.maxKey()), true, false, this, 0, (k, v) => {
+        await this._root.forRange((await this.minKey()), (await this.maxKey()), true, false, this, 0, (k, v) => {
             results.push(k);
         });
         return results;
@@ -825,7 +825,7 @@ class BTree {
     /** Gets an array of all values, sorted by key */
     async valuesArray() {
         var results = [];
-        this._root.forRange((await this.minKey()), (await this.maxKey()), true, false, this, 0, (k, v) => {
+        await this._root.forRange((await this.minKey()), (await this.maxKey()), true, false, this, 0, (k, v) => {
             results.push(v);
         });
         return results;
@@ -1083,7 +1083,7 @@ class BTree {
         delete this.editRange;
     }
     /** Returns true if the tree appears to be frozen. */
-    get isFrozen() {
+    async isFrozen() {
         return this.hasOwnProperty("editRange");
     }
     /** Scans the tree for signs of serious bugs (e.g. this.size doesn't match
@@ -1093,7 +1093,7 @@ class BTree {
      *  does check that maxKey() of the children of internal nodes are sorted. */
     async checkValid() {
         var size = this._root.checkValid(0, this, 0);
-        check((await size) === this.size, "size mismatch: counted ", size, "but stored", this.size);
+        check((await size) === await this.getSize(), "size mismatch: counted ", size, "but stored", await this.getSize());
     }
 }
 exports.default = BTree;
@@ -1500,19 +1500,19 @@ class BNodeInternal extends BNode {
         return (await this.getChildren())[0].minPair(reusedArray);
     }
     async maxPair(reusedArray) {
-        return (await this.getChildren())[(await this.getChildren()).length - 1].maxPair(reusedArray);
+        return await (await this.getChildren())[(await this.getChildren()).length - 1].maxPair(reusedArray);
     }
     async get(key, defaultValue, tree) {
         var i = await this.indexOf(key, 0, tree._compare), children = await this.getChildren();
         return i < children.length
-            ? children[i].get(key, defaultValue, tree)
+            ? await children[i].get(key, defaultValue, tree)
             : undefined;
     }
     async getPairOrNextLower(key, compare, inclusive, reusedArray) {
         var i = await this.indexOf(key, 0, compare), children = await this.getChildren();
         if (i >= children.length)
             return this.maxPair(reusedArray);
-        const result = children[i].getPairOrNextLower(key, compare, inclusive, reusedArray);
+        const result = await children[i].getPairOrNextLower(key, compare, inclusive, reusedArray);
         if (result === undefined && i > 0) {
             return children[i - 1].maxPair(reusedArray);
         }
@@ -1547,7 +1547,7 @@ class BNodeInternal extends BNode {
         // 2020/08: BTree doesn't always avoid grossly undersized nodes,
         // but AFAIK such nodes are pretty harmless, so accept them.
         let toofew = childSize === 0; // childSize < (tree.maxNodeSize >> 1)*cL;
-        if (toofew || childSize > tree.maxNodeSize * cL)
+        if (toofew || childSize > await tree.maxNodeSize() * cL)
             check(false, toofew ? "too few" : "too many", "children (", childSize, size, ") at depth", depth, "maxNodeSize:", tree.maxNodeSize, "children.length:", cL, "baseIndex:", baseIndex);
         return size;
     }
@@ -1654,7 +1654,7 @@ class BNodeInternal extends BNode {
         if (!editMode) {
             // Simple case
             for (; i <= iHigh; i++) {
-                var result = children[i].forRange(low, high, includeHigh, editMode, tree, count, onFound);
+                var result = await children[i].forRange(low, high, includeHigh, editMode, tree, count, onFound);
                 if (typeof result !== "number")
                     return result;
                 count = result;
@@ -1665,7 +1665,7 @@ class BNodeInternal extends BNode {
                 for (; i <= iHigh; i++) {
                     if (await children[i].isNodeShared())
                         children[i] = await children[i].clone();
-                    var result = children[i].forRange(low, high, includeHigh, editMode, tree, count, onFound);
+                    var result = await children[i].forRange(low, high, includeHigh, editMode, tree, count, onFound);
                     // Note: if children[i] is empty then keys[i]=undefined.
                     //       This is an invalid state, but it is fixed below.
                     keys[i] = await children[i].maxKey();
