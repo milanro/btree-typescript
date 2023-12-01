@@ -1,5 +1,4 @@
 // B+ tree by David Piepgrass. License: MIT
-import { ISortedMap, ISortedMapF, ISortedSet } from "./interfaces";
 import { getPersistenceManager } from "./persistence/globals/globals";
 import {
   PersistentBNode,
@@ -8,22 +7,7 @@ import {
   setupPersistentNode,
 } from "./persistence/util/proxyUtil";
 
-export {
-  ISetSource,
-  ISetSink,
-  ISet,
-  ISetF,
-  ISortedSetSource,
-  ISortedSet,
-  ISortedSetF,
-  IMapSource,
-  IMapSink,
-  IMap,
-  IMapF,
-  ISortedMapSource,
-  ISortedMap,
-  ISortedMapF,
-} from "./interfaces";
+
 
 export type EditRangeResult<V, R = number> = {
   value?: V;
@@ -1311,17 +1295,6 @@ export default class BTree<K = any, V = any>
       await this.getSize()
     );
   }
-}
-
-/** A TypeScript helper function that simply returns its argument, typed as
- *  `ISortedSet<K>` if the BTree implements it, as it does if `V extends undefined`.
- *  If `V` cannot be `undefined`, it returns `unknown` instead. Or at least, that
- *  was the intention, but TypeScript is acting weird and may return `ISortedSet<K>`
- *  even if `V` can't be `undefined` (discussion: btree-typescript issue #14) */
-export function asSet<K, V>(
-  btree: BTree<K, V>
-): undefined extends V ? ISortedSet<K> : unknown {
-  return btree as any;
 }
 
 

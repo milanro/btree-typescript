@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmptyBTree = exports.BNodeInternal = exports.BNode = exports.asSet = exports.simpleComparator = exports.defaultComparator = void 0;
+exports.EmptyBTree = exports.BNodeInternal = exports.BNode = exports.simpleComparator = exports.defaultComparator = void 0;
+// B+ tree by David Piepgrass. License: MIT
 const globals_1 = require("./persistence/globals/globals");
 const proxyUtil_1 = require("./persistence/util/proxyUtil");
 /**
@@ -941,15 +942,6 @@ class BTree {
     }
 }
 exports.default = BTree;
-/** A TypeScript helper function that simply returns its argument, typed as
- *  `ISortedSet<K>` if the BTree implements it, as it does if `V extends undefined`.
- *  If `V` cannot be `undefined`, it returns `unknown` instead. Or at least, that
- *  was the intention, but TypeScript is acting weird and may return `ISortedSet<K>`
- *  even if `V` can't be `undefined` (discussion: btree-typescript issue #14) */
-function asSet(btree) {
-    return btree;
-}
-exports.asSet = asSet;
 BTree.prototype.where = BTree.prototype.filter;
 BTree.prototype.setRange = BTree.prototype.setPairs;
 BTree.prototype.add = BTree.prototype.set; // for compatibility with ISetSink<K>

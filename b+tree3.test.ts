@@ -1,4 +1,4 @@
-import BTree, {IMap, EmptyBTree, defaultComparator, simpleComparator} from './b+tree';
+import BTree from './b+tree';
 import SortedArray from './sorted-array';
 import MersenneTwister from 'mersenne-twister';
 
@@ -10,7 +10,7 @@ async function expectTreeEqualTo(a: BTree, b: SortedArray) {
   await a.checkValid();
   expect(await a.toArray()).toEqual(b.getArray());
 }
-async function addToBoth<K,V>(a: IMap<K,V>, b: IMap<K,V>, k: K, v: V) {
+async function addToBoth<K,V>(a: BTree<K,V>, b: BTree<K,V>, k: K, v: V) {
   expect(await a.set(k,v)).toEqual(await b.set(k,v));
 }
 

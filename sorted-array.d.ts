@@ -1,6 +1,5 @@
-import { IMap } from './interfaces';
 /** A super-inefficient sorted list for testing purposes */
-export default class SortedArray<K = any, V = any> implements IMap<K, V> {
+export default class SortedArray<K = any, V = any> {
     a: [K, V][];
     cmp: (a: K, b: K) => number;
     constructor(entries?: [K, V][], compare?: (a: K, b: K) => number);

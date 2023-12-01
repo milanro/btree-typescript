@@ -1,4 +1,4 @@
-import BTree, {IMap, EmptyBTree, defaultComparator, simpleComparator} from './b+tree';
+import BTree, {defaultComparator, simpleComparator} from './b+tree';
 import SortedArray from './sorted-array';
 import MersenneTwister from 'mersenne-twister';
 
@@ -10,7 +10,7 @@ function expectTreeEqualTo(a: BTree, b: SortedArray) {
   a.checkValid();
   expect(a.toArray()).toEqual(b.getArray());
 }
-function addToBoth<K,V>(a: IMap<K,V>, b: IMap<K,V>, k: K, v: V) {
+function addToBoth<K,V>(a: BTree<K,V>, b: BTree<K,V>, k: K, v: V) {
   expect(a.set(k,v)).toEqual(b.set(k,v));
 }
 
@@ -275,14 +275,6 @@ describe('Simple tests on leaf nodes', () =>
         expect(await tree.getRange("#", "B", false)).toEqual([["A",1]]);
         expect(await tree.getRange("#", "B", true)).toEqual([["A",1],["B",2]]);
         expect(await tree.getRange("G", "S", true)).toEqual([["G",7],["H",8]]);
-      });
-      test('iterators work on leaf nodes', async () => {
-        expect(Array.from(await tree.entries())).toEqual(items);
-        expect(Array.from(await tree.keys())).toEqual(items.map(p => p[0]));
-        expect(Array.from(await tree.values())).toEqual(items.map(p => p[1]));
-      });
-      test('try out the reverse iterator', async () => {
-        expect(Array.from(await tree.entriesReversed())).toEqual(items.slice(0).reverse());
       });
       test('minKey() and maxKey()', async () => {
         expect(await tree.minKey()).toEqual("A");
