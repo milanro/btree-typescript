@@ -129,6 +129,9 @@ export default class BTree<K = any, V = any> {
     getLength(): Promise<number>;
     /** Returns true iff the tree contains no key-value pairs. */
     isEmpty(): Promise<boolean>;
+    setSize(size: number): Promise<void>;
+    incSize(): Promise<void>;
+    decSize(): Promise<void>;
     /** Releases the tree so that its size is 0. */
     clear(): Promise<void>;
     commit(): Promise<string>;

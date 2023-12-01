@@ -169,6 +169,15 @@ class BTree {
     async isEmpty() {
         return this._size === 0;
     }
+    async setSize(size) {
+        this._size = size;
+    }
+    async incSize() {
+        this._size++;
+    }
+    async decSize() {
+        this._size--;
+    }
     /** Releases the tree so that its size is 0. */
     async clear() {
         this._root = (0, proxyUtil_1.nodeToProxy)(EmptyLeaf);
@@ -381,17 +390,17 @@ class BTree {
         if (other._compare !== this._compare) {
             throw new Error("Tree comparators are not the same.");
         }
-        if (this.isEmpty || other.isEmpty) {
+        if (await this.isEmpty() || await other.isEmpty()) {
             if (await this.isEmpty() && await other.isEmpty())
                 return undefined;
             // If one tree is empty, everything will be an onlyThis/onlyOther.
             if (await this.isEmpty())
                 return onlyOther === undefined
                     ? undefined
-                    : BTree.stepToEnd(await BTree.makeDiffCursor(other), onlyOther);
+                    : await BTree.stepToEnd(await BTree.makeDiffCursor(other), onlyOther);
             return onlyThis === undefined
                 ? undefined
-                : BTree.stepToEnd(await BTree.makeDiffCursor(this), onlyThis);
+                : await BTree.stepToEnd(await BTree.makeDiffCursor(this), onlyThis);
         }
         // Cursor-based diff algorithm is as follows:
         // - Until neither cursor has navigated to the end of the tree, do the following:
@@ -635,10 +644,11 @@ class BTree {
      *  copies are cloned so that the changes do not affect other copies.
      *  This is known as copy-on-write behavior, or "lazy copying". */
     async clone() {
-        this._root.setShared(true);
+        await this._root.setShared(true);
         var result = new BTree(undefined, this._compare, this._maxNodeSize);
+        await result.applyEntries();
         result._root = this._root;
-        result._size = this._size;
+        result._size = await this.getSize();
         return result;
     }
     /** Performs a greedy clone, immediately duplicating any nodes that are
@@ -648,8 +658,9 @@ class BTree {
      */
     async greedyClone(force) {
         var result = new BTree(undefined, this._compare, this._maxNodeSize);
+        result.applyEntries();
         result._root = (0, proxyUtil_1.nodeToProxy)(await this._root.greedyClone(force));
-        result._size = this._size;
+        result._size = await this.getSize();
         return result;
     }
     /** Gets an array filled with the contents of the tree, sorted by key */
@@ -847,8 +858,8 @@ class BTree {
         }
         finally {
             let isShared;
-            while ((await root.getKeys()).length <= 1 && !root.isLeafNode()) {
-                isShared || (isShared = root.isNodeShared());
+            while ((await root.getKeys()).length <= 1 && !await root.isLeafNode()) {
+                isShared || (isShared = await root.isNodeShared());
                 this._root = root =
                     (await root.getKeys()).length === 0
                         ? (0, proxyUtil_1.nodeToProxy)(EmptyLeaf)
@@ -856,7 +867,7 @@ class BTree {
             }
             // If any ancestor of the new root was shared, the new root must also be shared
             if (isShared) {
-                root.setShared(true);
+                await root.setShared(true);
             }
         }
     }
@@ -1089,7 +1100,7 @@ class BNode {
         return cloned;
     }
     async greedyClone(force) {
-        return (await this.isNodeShared()) && !force ? this : this.clone();
+        return (await this.isNodeShared()) && !force ? this : await this.clone();
     }
     async get(key, defaultValue, tree) {
         var i = await this.indexOf(key, -1, tree._compare);
@@ -1134,7 +1145,7 @@ class BNode {
         if (i < 0) {
             // key does not exist yet
             i = ~i;
-            tree._size++;
+            await tree.incSize();
             if ((await this.getKeys()).length < tree._maxNodeSize) {
                 return await this.insertInLeaf(i, key, value, tree);
             }
@@ -1252,7 +1263,7 @@ class BNode {
                             (await this.getKeys()).splice(i, 1);
                             if ((await this.getValues()) !== undefVals)
                                 (await this.getValues()).splice(i, 1);
-                            tree._size--;
+                            await tree.decSize();
                             i--;
                             iHigh--;
                         }
@@ -1310,7 +1321,7 @@ class BNodeInternal extends BNode {
     async clone() {
         var children = (await this.getChildren()).slice(0);
         for (var i = 0; i < children.length; i++)
-            children[i].setShared(true);
+            await children[i].setShared(true);
         const clonedNode = new BNodeInternal(children, (await this.getKeys()).slice(0));
         await clonedNode.applyMaxKeys();
         return (0, proxyUtil_1.nodeToProxy)(clonedNode);
@@ -1564,7 +1575,7 @@ class BNodeInternal extends BNode {
             // All children of a shared node are implicitly shared, and since their new
             // parent is not shared, they must now be explicitly marked as shared.
             for (var i = 0; i < rhsChildren.length; i++)
-                rhsChildren[i].setShared(true);
+                await rhsChildren[i].setShared(true);
         }
         // If our children are themselves almost empty due to a mass-delete,
         // they may need to be merged too (but only the oldLength-1 and its
