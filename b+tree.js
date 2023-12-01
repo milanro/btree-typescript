@@ -333,140 +333,6 @@ class BTree {
         });
         return nu;
     }
-    async reduce(callback, initialValue) {
-        let i = 0, p = initialValue;
-        var it = await this.entries(await this.minKey(), ReusedArray), next;
-        while (!(next = it.next()).done)
-            p = callback(p, next.value, i++, this);
-        return p;
-    }
-    /////////////////////////////////////////////////////////////////////////////
-    // Iterator methods /////////////////////////////////////////////////////////
-    /** Returns an iterator that provides items in order (ascending order if
-     *  the collection's comparator uses ascending order, as is the default.)
-     *  @param lowestKey First key to be iterated, or undefined to start at
-     *         minKey(). If the specified key doesn't exist then iteration
-     *         starts at the next higher key (according to the comparator).
-     *  @param reusedArray Optional array used repeatedly to store key-value
-     *         pairs, to avoid creating a new array on every iteration.
-     */
-    async entries(lowestKey, reusedArray) {
-        var info = await this.findPath(lowestKey);
-        if (info === undefined)
-            return iterator();
-        var { nodequeue, nodeindex, leaf } = info;
-        var state = reusedArray !== undefined ? 1 : 0;
-        var i = lowestKey === undefined
-            ? -1
-            : await leaf.indexOf(lowestKey, 0, this._compare) - 1;
-        return iterator(async () => {
-            jump: for (;;) {
-                switch (state) {
-                    case 0:
-                        if (++i < (await leaf.getKeys()).length)
-                            return {
-                                done: false,
-                                value: [(await leaf.getKeys())[i], (await leaf.getValues())[i]],
-                            };
-                        state = 2;
-                        continue;
-                    case 1:
-                        if (++i < (await leaf.getKeys()).length) {
-                            (reusedArray[0] = (await leaf.getKeys())[i]),
-                                (reusedArray[1] = (await leaf.getValues())[i]);
-                            return { done: false, value: reusedArray };
-                        }
-                        state = 2;
-                    case 2:
-                        // Advance to the next leaf node
-                        for (var level = -1;;) {
-                            if (++level >= nodequeue.length) {
-                                state = 3;
-                                continue jump;
-                            }
-                            if (++nodeindex[level] < nodequeue[level].length)
-                                break;
-                        }
-                        for (; level > 0; level--) {
-                            nodequeue[level - 1] = await nodequeue[level][nodeindex[level]].getChildren();
-                            nodeindex[level - 1] = 0;
-                        }
-                        leaf = nodequeue[0][nodeindex[0]];
-                        i = -1;
-                        state = reusedArray !== undefined ? 1 : 0;
-                        continue;
-                    case 3:
-                        return { done: true, value: undefined };
-                }
-            }
-        });
-    }
-    /** Returns an iterator that provides items in reversed order.
-     *  @param highestKey Key at which to start iterating, or undefined to
-     *         start at maxKey(). If the specified key doesn't exist then iteration
-     *         starts at the next lower key (according to the comparator).
-     *  @param reusedArray Optional array used repeatedly to store key-value
-     *         pairs, to avoid creating a new array on every iteration.
-     *  @param skipHighest Iff this flag is true and the highestKey exists in the
-     *         collection, the pair matching highestKey is skipped, not iterated.
-     */
-    async entriesReversed(highestKey, reusedArray, skipHighest) {
-        if (highestKey === undefined) {
-            highestKey = await this.maxKey();
-            skipHighest = undefined;
-            if (highestKey === undefined)
-                return iterator(); // collection is empty
-        }
-        var { nodequeue, nodeindex, leaf } = (await this.findPath(highestKey) || await this.findPath(await this.maxKey()));
-        check(!nodequeue[0] || leaf === nodequeue[0][nodeindex[0]], "wat!");
-        var i = await leaf.indexOf(highestKey, 0, this._compare);
-        if (!skipHighest &&
-            i < (await leaf.getKeys()).length &&
-            this._compare((await leaf.getKeys())[i], highestKey) <= 0)
-            i++;
-        var state = reusedArray !== undefined ? 1 : 0;
-        return iterator(async () => {
-            jump: for (;;) {
-                switch (state) {
-                    case 0:
-                        if (--i >= 0)
-                            return {
-                                done: false,
-                                value: [(await leaf.getKeys())[i], (await leaf.getValues())[i]],
-                            };
-                        state = 2;
-                        continue;
-                    case 1:
-                        if (--i >= 0) {
-                            (reusedArray[0] = (await leaf.getKeys())[i]),
-                                (reusedArray[1] = (await leaf.getValues())[i]);
-                            return { done: false, value: reusedArray };
-                        }
-                        state = 2;
-                    case 2:
-                        // Advance to the next leaf node
-                        for (var level = -1;;) {
-                            if (++level >= nodequeue.length) {
-                                state = 3;
-                                continue jump;
-                            }
-                            if (--nodeindex[level] >= 0)
-                                break;
-                        }
-                        for (; level > 0; level--) {
-                            nodequeue[level - 1] = await nodequeue[level][nodeindex[level]].getChildren();
-                            nodeindex[level - 1] = nodequeue[level - 1].length - 1;
-                        }
-                        leaf = nodequeue[0][nodeindex[0]];
-                        i = (await leaf.getKeys()).length;
-                        state = reusedArray !== undefined ? 1 : 0;
-                        continue;
-                    case 3:
-                        return { done: true, value: undefined };
-                }
-            }
-        });
-    }
     /* Used by entries() and entriesReversed() to prepare to start iterating.
      * It develops a "node queue" for each non-leaf level of the tree.
      * Levels are numbered "bottom-up" so that level 0 is a list of leaf
@@ -748,28 +614,6 @@ class BTree {
     }
     // End of helper methods for diffAgainst //////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////
-    /** Returns a new iterator for iterating the keys of each pair in ascending order.
-     *  @param firstKey: Minimum key to include in the output. */
-    async keys(firstKey) {
-        var it = await this.entries(firstKey, ReusedArray);
-        return iterator(async () => {
-            var n = it.next();
-            if (n.value)
-                n.value = n.value[0];
-            return n;
-        });
-    }
-    /** Returns a new iterator for iterating the values of each pair in order by key.
-     *  @param firstKey: Minimum key whose associated value is included in the output. */
-    async values(firstKey) {
-        var it = await this.entries(firstKey, ReusedArray);
-        return iterator(async () => {
-            var n = it.next();
-            if (n.value)
-                n.value = n.value[1];
-            return n;
-        });
-    }
     /////////////////////////////////////////////////////////////////////////////
     // Additional methods ///////////////////////////////////////////////////////
     /** Returns the maximum number of children/values before nodes will split. */
@@ -1106,9 +950,6 @@ function asSet(btree) {
     return btree;
 }
 exports.asSet = asSet;
-if (Symbol && Symbol.iterator)
-    // iterator is equivalent to entries()
-    BTree.prototype[Symbol.iterator] = BTree.prototype.entries;
 BTree.prototype.where = BTree.prototype.filter;
 BTree.prototype.setRange = BTree.prototype.setPairs;
 BTree.prototype.add = BTree.prototype.set; // for compatibility with ISetSink<K>

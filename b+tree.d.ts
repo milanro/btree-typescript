@@ -225,39 +225,6 @@ export default class BTree<K = any, V = any> {
     filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with all values altered by a callback function. */
     mapValues<R>(callback: (v: V, k: K, counter: number) => R): Promise<BTree<K, R>>;
-    /** Performs a reduce operation like the `reduce` method of `Array`.
-     *  It is used to combine all pairs into a single value, or perform
-     *  conversions. `reduce` is best understood by example. For example,
-     *  `tree.reduce((P, pair) => P * pair[0], 1)` multiplies all keys
-     *  together. It means "start with P=1, and for each pair multiply
-     *  it by the key in pair[0]". Another example would be converting
-     *  the tree to a Map (in this example, note that M.set returns M):
-     *
-     *  var M = tree.reduce((M, pair) => M.set(pair[0],pair[1]), new Map())
-     *
-     *  **Note**: the same array is sent to the callback on every iteration.
-     */
-    reduce<R>(callback: (previous: R, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R, initialValue: R): Promise<R>;
-    reduce<R>(callback: (previous: R | undefined, currentPair: [K, V], counter: number, tree: BTree<K, V>) => R): Promise<R | undefined>;
-    /** Returns an iterator that provides items in order (ascending order if
-     *  the collection's comparator uses ascending order, as is the default.)
-     *  @param lowestKey First key to be iterated, or undefined to start at
-     *         minKey(). If the specified key doesn't exist then iteration
-     *         starts at the next higher key (according to the comparator).
-     *  @param reusedArray Optional array used repeatedly to store key-value
-     *         pairs, to avoid creating a new array on every iteration.
-     */
-    entries(lowestKey?: K, reusedArray?: (K | V)[]): Promise<IterableIterator<[K, V]>>;
-    /** Returns an iterator that provides items in reversed order.
-     *  @param highestKey Key at which to start iterating, or undefined to
-     *         start at maxKey(). If the specified key doesn't exist then iteration
-     *         starts at the next lower key (according to the comparator).
-     *  @param reusedArray Optional array used repeatedly to store key-value
-     *         pairs, to avoid creating a new array on every iteration.
-     *  @param skipHighest Iff this flag is true and the highestKey exists in the
-     *         collection, the pair matching highestKey is skipped, not iterated.
-     */
-    entriesReversed(highestKey?: K, reusedArray?: (K | V)[], skipHighest?: boolean): Promise<IterableIterator<[K, V]>>;
     private findPath;
     /**
      * Computes the differences between `this` and `other`.
@@ -295,12 +262,6 @@ export default class BTree<K = any, V = any> {
      * Note that cursors are advanced in reverse sorting order.
      */
     private static compare;
-    /** Returns a new iterator for iterating the keys of each pair in ascending order.
-     *  @param firstKey: Minimum key to include in the output. */
-    keys(firstKey?: K): Promise<IterableIterator<K>>;
-    /** Returns a new iterator for iterating the values of each pair in order by key.
-     *  @param firstKey: Minimum key whose associated value is included in the output. */
-    values(firstKey?: K): Promise<IterableIterator<V>>;
     /** Returns the maximum number of children/values before nodes will split. */
     maxNodeSize(): Promise<number>;
     /** Gets the lowest key in the tree. Complexity: O(log size) */
