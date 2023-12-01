@@ -488,22 +488,22 @@ class BTree {
             }
         }
         if (thisSuccess && onlyThis)
-            return BTree.finishCursorWalk(thisCursor, otherCursor, _compare, onlyThis);
+            return await BTree.finishCursorWalk(thisCursor, otherCursor, _compare, onlyThis);
         if (otherSuccess && onlyOther)
-            return BTree.finishCursorWalk(otherCursor, thisCursor, _compare, onlyOther);
+            return await BTree.finishCursorWalk(otherCursor, thisCursor, _compare, onlyOther);
     }
     ///////////////////////////////////////////////////////////////////////////
     // Helper methods for diffAgainst /////////////////////////////////////////
     static async finishCursorWalk(cursor, cursorFinished, compareKeys, callback) {
         const compared = await BTree.compare(cursor, cursorFinished, compareKeys);
         if (compared === 0) {
-            if (!BTree.step(cursor))
+            if (!await BTree.step(cursor))
                 return undefined;
         }
         else if (compared < 0) {
             check(false, "cursor walk terminated early");
         }
-        return BTree.stepToEnd(cursor, callback);
+        return await BTree.stepToEnd(cursor, callback);
     }
     static async stepToEnd(cursor, callback) {
         let canStep = true;

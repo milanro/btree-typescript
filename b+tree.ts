@@ -682,14 +682,14 @@ export default class BTree<K = any, V = any>
     }
 
     if (thisSuccess && onlyThis)
-      return BTree.finishCursorWalk(
+      return await BTree.finishCursorWalk(
         thisCursor,
         otherCursor,
         _compare,
         onlyThis
       );
     if (otherSuccess && onlyOther)
-      return BTree.finishCursorWalk(
+      return await BTree.finishCursorWalk(
         otherCursor,
         thisCursor,
         _compare,
@@ -708,11 +708,11 @@ export default class BTree<K = any, V = any>
   ): Promise<R | undefined> {
     const compared = await BTree.compare(cursor, cursorFinished, compareKeys);
     if (compared === 0) {
-      if (!BTree.step(cursor)) return undefined;
+      if (! await BTree.step(cursor)) return undefined;
     } else if (compared < 0) {
       check(false, "cursor walk terminated early");
     }
-    return BTree.stepToEnd(cursor, callback);
+    return await BTree.stepToEnd(cursor, callback);
   }
 
   private static async stepToEnd<K, V, R>(
