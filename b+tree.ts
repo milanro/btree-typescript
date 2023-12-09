@@ -1850,14 +1850,14 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
       children = await this.getChildren(),
       length = children.length;
     if (i >= length) return undefined;
-    const result = children[i].getPairOrNextHigher(
+    const result = await children[i].getPairOrNextHigher(
       key,
       compare,
       inclusive,
       reusedArray
     );
     if (result === undefined && i < length - 1) {
-      return children[i + 1].minPair(reusedArray);
+      return await children[i + 1].minPair(reusedArray);
     }
     return result;
   }

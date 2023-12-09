@@ -1366,9 +1366,9 @@ class BNodeInternal extends BNode {
         var i = await this.indexOf(key, 0, compare), children = await this.getChildren(), length = children.length;
         if (i >= length)
             return undefined;
-        const result = children[i].getPairOrNextHigher(key, compare, inclusive, reusedArray);
+        const result = await children[i].getPairOrNextHigher(key, compare, inclusive, reusedArray);
         if (result === undefined && i < length - 1) {
-            return children[i + 1].minPair(reusedArray);
+            return await children[i + 1].minPair(reusedArray);
         }
         return result;
     }

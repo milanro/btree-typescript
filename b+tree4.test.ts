@@ -56,7 +56,78 @@ function testBTree(maxNodeSize: number)
       expectTreeEqualTo(tree, list);
     });
   }
+
+  describe(`Next higher/lower methods`, () => {
+    test(`nextLower/nextHigher methods return undefined in an empty tree`, async () => {
+      const tree = new BTree<number,number>(undefined, undefined, maxNodeSize);
+      await tree.applyEntries();
+      expect(await tree.nextLowerPair(undefined)).toEqual(undefined);
+      expect(await tree.nextHigherPair(undefined)).toEqual(undefined);
+      expect(await tree.getPairOrNextLower(1)).toEqual(undefined);
+      expect(await tree.getPairOrNextHigher(2)).toEqual(undefined);
+      
+      // This shouldn't make a difference
+      await tree.set(5, 55);
+      await tree.delete(5);
+      
+      expect(await tree.nextLowerPair(undefined)).toEqual(undefined);
+      expect(await tree.nextHigherPair(undefined)).toEqual(undefined);
+      expect(await tree.nextLowerPair(3)).toEqual(undefined);
+      expect(await tree.nextHigherPair(4)).toEqual(undefined);
+      expect(await tree.getPairOrNextLower(5)).toEqual(undefined);
+      expect(await tree.getPairOrNextHigher(6)).toEqual(undefined);
+    });
+
+    async function initTreeandPairs(size: number) {
+      const tree = new BTree<number,number>(undefined, undefined, maxNodeSize);
+      await tree.applyEntries();
+      const pairs: [number,number][] = [];
+      for (let i = 0; i < size; i++) {
+        const value = i;
+        await tree.set(i * 2, value);
+        pairs.push([i * 2, value]);
+      }
+      return {tree, pairs}
+    }
+
+    for (let size of [5, 10, 300]) {
+
+
+      test(`nextLowerPair/nextHigherPair for tree of size ${size}`, async () => {
+        const {tree, pairs} = await initTreeandPairs(size);
+        expect(await tree.nextHigherPair(undefined)).toEqual([await tree.minKey()!, await tree.get((await tree.minKey())!)]);
+        expect(await tree.nextHigherPair(await tree.maxKey())).toEqual(undefined);
+        for (let i = 0; i < size * 2; i++) {
+          if (i > 0) {
+            expect(await tree.nextLowerPair(i)).toEqual(pairs[((i + 1) >> 1) - 1]);
+          }
+          if (i < size - 1) {
+            let testPair = await tree.nextHigherPair(i);
+            if(testPair === undefined){
+              console.log(i);
+              testPair = await tree.nextHigherPair(i);
+            }
+            expect(await tree.nextHigherPair(i)).toEqual(pairs[(i >> 1) + 1]);
+          }
+        }
+        expect(await tree.nextLowerPair(undefined)).toEqual([await tree.maxKey()!, await tree.get((await tree.maxKey())!)]);
+        expect(await tree.nextLowerPair(await tree.minKey())).toEqual(undefined);
+      })
+
+      test(`getPairOrNextLower/getPairOrNextHigher for tree of size ${size}`, async () => {
+        const {tree, pairs} = await initTreeandPairs(size);
+        for (let i = 0; i < size * 2; i++) {
+          if (i > 0) {
+            expect(await tree.getPairOrNextLower(i)).toEqual(pairs[i >> 1]);
+          }
+          if (i < size - 1) {
+            expect(await tree.getPairOrNextHigher(i)).toEqual(pairs[(i + 1) >> 1]);
+          }
+        }
+      })
+    }
+  });
+
 }
 
 
-describe('dummy', () => { test('dummy', () => {}) } );  
