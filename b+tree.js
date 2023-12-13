@@ -948,8 +948,8 @@ class BTree {
      *  skips the most expensive test - whether all keys are sorted - but it
      *  does check that maxKey() of the children of internal nodes are sorted. */
     async checkValid() {
-        var size = this._root.checkValid(0, this, 0);
-        check((await size) === await this.getSize(), "size mismatch: counted ", size, "but stored", await this.getSize());
+        var size = await this._root.checkValid(0, this, 0);
+        check(size === await this.getSize(), "size mismatch: counted ", size, "but stored", await this.getSize());
     }
 }
 exports.default = BTree;
@@ -1284,13 +1284,13 @@ class BNode {
     }
     /** Adds entire contents of right-hand sibling (rhs is left unchanged) */
     async mergeSibling(rhs, _) {
-        (await this.getKeys()).push.apply(this.getKeys(), await rhs.getKeys());
+        (await this.getKeys()).push.apply(await this.getKeys(), await rhs.getKeys());
         if ((await this.getValues()) === undefVals) {
             if ((await rhs.getValues()) === undefVals)
                 return;
-            this.setValues((await this.getValues()).slice(0, (await this.getKeys()).length));
+            await this.setValues((await this.getValues()).slice(0, (await this.getKeys()).length));
         }
-        (await this.getValues()).push.apply(this.getValues(), await rhs.reifyValues());
+        (await this.getValues()).push.apply(await this.getValues(), await rhs.reifyValues());
     }
 }
 exports.BNode = BNode;
@@ -1529,7 +1529,7 @@ class BNodeInternal extends BNode {
                 for (i = iHigh; i >= iLow; i--) {
                     if ((await children[i].getKeys()).length <= half) {
                         if ((await children[i].getKeys()).length !== 0) {
-                            this.tryMerge(i, tree._maxNodeSize);
+                            await this.tryMerge(i, tree._maxNodeSize);
                         }
                         else {
                             // child is empty! delete it!
@@ -1554,7 +1554,7 @@ class BNodeInternal extends BNode {
                 if (await children[i].isNodeShared())
                     // cloned already UNLESS i is outside scan range
                     children[i] = await children[i].clone();
-                children[i].mergeSibling(children[i + 1], maxSize);
+                await children[i].mergeSibling(children[i + 1], maxSize);
                 children.splice(i + 1, 1);
                 (await this.getKeys()).splice(i + 1, 1);
                 (await this.getKeys())[i] = await children[i].maxKey();
@@ -1571,10 +1571,10 @@ class BNodeInternal extends BNode {
     async mergeSibling(rhs, maxNodeSize) {
         // assert !this.isShared;
         var oldLength = (await this.getKeys()).length;
-        (await this.getKeys()).push.apply(this.getKeys(), await rhs.getKeys());
+        (await this.getKeys()).push.apply(await this.getKeys(), await rhs.getKeys());
         const rhsChildren = await rhs.getChildren();
-        (await this.getChildren()).push.apply(this.getChildren(), rhsChildren);
-        if ((await rhs.isNodeShared()) && !this.isNodeShared()) {
+        (await this.getChildren()).push.apply(await this.getChildren(), rhsChildren);
+        if ((await rhs.isNodeShared()) && !(await this.isNodeShared())) {
             // All children of a shared node are implicitly shared, and since their new
             // parent is not shared, they must now be explicitly marked as shared.
             for (var i = 0; i < rhsChildren.length; i++)
@@ -1583,7 +1583,7 @@ class BNodeInternal extends BNode {
         // If our children are themselves almost empty due to a mass-delete,
         // they may need to be merged too (but only the oldLength-1 and its
         // right sibling should need this).
-        this.tryMerge(oldLength - 1, maxNodeSize);
+        await this.tryMerge(oldLength - 1, maxNodeSize);
     }
 }
 exports.BNodeInternal = BNodeInternal;
