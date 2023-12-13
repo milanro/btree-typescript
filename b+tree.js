@@ -1146,7 +1146,9 @@ class BNode {
             // key does not exist yet
             i = ~i;
             await tree.incSize();
-            if ((await this.getKeys()).length < tree._maxNodeSize) {
+            const mykeys = await this.getKeys();
+            const keysLength = mykeys.length;
+            if (keysLength < tree._maxNodeSize) {
                 return await this.insertInLeaf(i, key, value, tree);
             }
             else {
@@ -1443,7 +1445,8 @@ class BNodeInternal extends BNode {
         else {
             // no, we must split also
             var newRightSibling = await this.splitOffRightSide(), target = this;
-            if ((await result.maxKey()) > (await this.maxKey())) {
+            if (cmp(await result.maxKey(), (await this.maxKey())) > 0) {
+                // if ((await (result as BNode<K, V>).maxKey()) > (await this.maxKey())) {
                 target = newRightSibling;
                 i -= (await this.getKeys()).length;
             }
