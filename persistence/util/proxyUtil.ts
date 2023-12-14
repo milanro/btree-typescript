@@ -135,7 +135,7 @@ export class PersistentBNode {
     }
     this.loadId = id;
     this.id = undefined;
-    console.log("loaded : ", id);
+    // console.log("loaded : ", id);
   }
 
  async  printWholeTree(): Promise<void> {
@@ -196,7 +196,7 @@ function wrapPersistentNode(target: PersistentBNode): NodeProxy {
           return result;
         } else {
           if(prop === 'then') {
-            console.log('then');
+            // console.log('then');
             return undefined;
           }
           return async function (...args: any[]) {
@@ -207,7 +207,7 @@ function wrapPersistentNode(target: PersistentBNode): NodeProxy {
               throw new Error("node is undefined");
             }
             if(nodeMember === undefined) {
-              console.log('Failing all method from node' + " PROP : ", (prop as string), "\nargs:\n" + args);
+              // console.log('Failing all method from node' + " PROP : ", (prop as string), "\nargs:\n" + args);
             }                        
             try{
               const result = await nodeMember.apply(node, args);

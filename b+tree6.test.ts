@@ -156,45 +156,49 @@ function testBTree(maxNodeSize: number)
       await expectDiffCorrect(treeA, treeB);
       await expectDiffCorrect(treeB, treeA);
     });
-/*
+
     async function applyChanges(treeA: BTree<number, number>, duplicate: (tree: BTree<number, number>) => Promise<BTree<number, number>>) {
       const treeB = await duplicate(treeA);
       const maxKey: number = (await treeA.maxKey())!;
       const onlyInA = -10;
-      treeA.set(onlyInA, onlyInA);
+      await treeA.set(onlyInA, onlyInA);
       const onlyInBSmall = -1;
-      treeB.set(onlyInBSmall, onlyInBSmall);
+      await treeB.set(onlyInBSmall, onlyInBSmall);
       const onlyInBLarge = maxKey + 1;
-      treeB.set(onlyInBLarge, onlyInBLarge);
+      await treeB.set(onlyInBLarge, onlyInBLarge);
       const onlyInAFromDelete = 10
-      treeB.delete(onlyInAFromDelete);
+      await treeB.delete(onlyInAFromDelete);
       const differingValue = -100;
       const modifiedInB1 = 3, modifiedInB2 = maxKey - 2;
-      treeB.set(modifiedInB1, differingValue);
-      treeB.set(modifiedInB2, differingValue)
-      treeA.diffAgainst(treeB, OnlyThis, OnlyOther, Different);
-      expectDiffCorrect(treeA, treeB);
+      await treeB.set(modifiedInB1, differingValue);
+      await treeB.set(modifiedInB2, differingValue);
+      const {OnlyOther, OnlyThis, Different} = await reset();
+      await treeA.diffAgainst(treeB, OnlyThis, OnlyOther, Different);
+      await expectDiffCorrect(treeA, treeB);
     }
 
-    function makeLargeTree(size?: number): BTree<number, number> {
+    async function makeLargeTree(size?: number): Promise<BTree<number, number>> {
       size = size ?? Math.pow(maxNodeSize, 3);
       const tree = new BTree<number, number>([], compare, maxNodeSize);
+      await tree.applyEntries();
       for (let i = 0; i < size; i++) {
-        tree.set(i, i);
+        await tree.set(i, i);
       }
       return tree;
     }
 
     test(`Diff of large trees`, async () => {
-      const tree = makeLargeTree();
+      const tree = await makeLargeTree();
       applyChanges(tree, async (tree) => await tree.greedyClone());
     });
 
-    test(`Diff of cloned trees`, () => {
-      const tree = makeLargeTree();
+    test(`Diff of cloned trees`, async () => {
+      const tree = await makeLargeTree();
       applyChanges(tree, tree => tree.clone());
     });
 
+
+    /*
     test(`Diff can early exit`, async () => {
       const tree = await makeLargeTree(100);
       const tree2 = await tree.clone();
