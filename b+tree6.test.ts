@@ -198,84 +198,94 @@ function testBTree(maxNodeSize: number)
     });
 
 
-    /*
+
     test(`Diff can early exit`, async () => {
       const tree = await makeLargeTree(100);
       const tree2 = await tree.clone();
       await tree2.set(-1, -1);
-      tree2.delete(10);
-      tree2.set(20, -1);
-      tree2.set(110, -1);
-      const ReturnKey = (key: number) => { return { break: key }; };
+      await tree2.delete(10);
+      await tree2.set(20, -1);
+      await tree2.set(110, -1);
+      const ReturnKey = async (key: number) => { return { break: key }; };
 
-      let val = tree.diffAgainst(tree2, OnlyThis, OnlyOther, ReturnKey);
-      expect(onlyOther.size).toEqual(1);
-      expect(onlyThis.size).toEqual(0);
-      expect(val).toEqual(20);
-      reset();
+      {
+          const {OnlyOther, OnlyThis, Different, onlyOther, onlyThis, different} = await reset();
+          let val = await tree.diffAgainst(tree2, OnlyThis, OnlyOther, ReturnKey);
+          expect(onlyOther.size).toEqual(1);
+          expect(onlyThis.size).toEqual(0);
+          expect(val).toEqual(20);
+      }
+      {
+        const {OnlyOther, OnlyThis, Different, onlyOther, onlyThis, different} = await reset();
+        let val = await tree.diffAgainst(tree2, OnlyThis, ReturnKey, Different);
+        expect(different.size).toEqual(0);
+        expect(onlyThis.size).toEqual(0);
+        expect(val).toEqual(110);
+      }
+      {
+        const {OnlyOther, OnlyThis, Different, onlyOther, onlyThis, different} = await reset();
+        let val = await tree.diffAgainst(tree2, ReturnKey, OnlyOther, Different);
+        expect(different.size).toEqual(1);
+        expect(onlyOther.size).toEqual(1);
+        expect(val).toEqual(10);
+      }
 
-      val = tree.diffAgainst(tree2, OnlyThis, ReturnKey, Different);
-      expect(different.size).toEqual(0);
-      expect(onlyThis.size).toEqual(0);
-      expect(val).toEqual(110);
-      reset();
-
-      val = tree.diffAgainst(tree2, ReturnKey, OnlyOther, Different);
-      expect(different.size).toEqual(1);
-      expect(onlyOther.size).toEqual(1);
-      expect(val).toEqual(10);
-      reset();
-
-      expectDiffCorrect(tree, tree2);
+      await expectDiffCorrect(tree, tree2);
     });
-  });
+
+
 
   test("Issue #2 reproduction", async () => {
     const tree = new BTree<number>([], (a, b) => a - b, maxNodeSize);
+    await tree.applyEntries();
     for (let i = 0; i <= 1999; i++) {
-      tree.set(i, i);
-      if (await tree.getSize() > 100 && i % 2 == 0) {
+      await tree.set(i, i);
+      if (await await tree.getSize() > 100 && i % 2 == 0) {
         const key = i / 2;
-        tree.delete(key);
-        tree.checkValid();
-        expect(await tree.getSize()).toBe(i / 2 + 50);
+        await tree.delete(key);
+        await tree.checkValid();
+        expect(await await tree.getSize()).toBe(i / 2 + 50);
       }
     }
   });
 
 
-  test("nextLowerPair/nextHigherPair and issue #9: nextLowerPair returns highest pair if key is 0", () => {
+  test("nextLowerPair/nextHigherPair and issue #9: nextLowerPair returns highest pair if key is 0", async () => {
     const tree = new BTree<number,number>(undefined, undefined, maxNodeSize);
-    tree.set(-2, 123);
-    tree.set(0, 1234);
-    tree.set(2, 12345);
+    await tree.applyEntries();
+    await tree.set(-2, 123);
+    await tree.set(0, 1234);
+    await tree.set(2, 12345);
     
-    expect(tree.nextLowerPair(-2)).toEqual(undefined);
-    expect(tree.nextLowerPair(-1)).toEqual([-2, 123]);
-    expect(tree.nextLowerPair(0)).toEqual([-2, 123]);
-    expect(tree.nextLowerKey(0)).toBe(-2);
-    expect(tree.nextHigherPair(-1)).toEqual([0, 1234]);
-    expect(tree.nextHigherPair(0)).toEqual([2, 12345]);
-    expect(tree.nextHigherKey(0)).toBe(2);
-    expect(tree.nextHigherPair(1)).toEqual([2, 12345]);
-    expect(tree.nextHigherPair(2)).toEqual(undefined);
-    expect(tree.nextLowerPair(undefined)).toEqual([2, 12345]);
-    expect(tree.nextHigherPair(undefined)).toEqual([-2, 123]);
+    expect(await tree.nextLowerPair(-2)).toEqual(undefined);
+    expect(await tree.nextLowerPair(-1)).toEqual([-2, 123]);
+    expect(await tree.nextLowerPair(0)).toEqual([-2, 123]);
+    expect(await tree.nextLowerKey(0)).toBe(-2);
+    expect(await tree.nextHigherPair(-1)).toEqual([0, 1234]);
+    expect(await tree.nextHigherPair(0)).toEqual([2, 12345]);
+    expect(await tree.nextHigherKey(0)).toBe(2);
+    expect(await tree.nextHigherPair(1)).toEqual([2, 12345]);
+    expect(await tree.nextHigherPair(2)).toEqual(undefined);
+    expect(await tree.nextLowerPair(undefined)).toEqual([2, 12345]);
+    expect(await tree.nextHigherPair(undefined)).toEqual([-2, 123]);
 
     for (let i = -10; i <= 300; i++) // embiggen the tree
-      tree.set(i, i*2);
-    expect(tree.nextLowerPair(-1)).toEqual([-2, -4]);
-    expect(tree.nextLowerPair(0)).toEqual([-1, -2]);
-    expect(tree.nextHigherPair(-1)).toEqual([0, 0]);
-    expect(tree.nextHigherPair(0)).toEqual([1, 2]);
+      await tree.set(i, i*2);
+    expect(await tree.nextLowerPair(-1)).toEqual([-2, -4]);
+    expect(await tree.nextLowerPair(0)).toEqual([-1, -2]);
+    expect(await tree.nextHigherPair(-1)).toEqual([0, 0]);
+    expect(await tree.nextHigherPair(0)).toEqual([1, 2]);
     
-    expect(tree.nextLowerPair(undefined)).toEqual([300, 600]);
-    expect(tree.nextHigherPair(undefined)).toEqual([-10, -20]);
+    expect(await tree.nextLowerPair(undefined)).toEqual([300, 600]);
+    expect(await tree.nextHigherPair(undefined)).toEqual([-10, -20]);
   });
 
-  test('Regression test for invalid default comparator causing malformed trees', () => {
+
+
+  test('Regression test for invalid default comparator causing malformed trees', async () => {
     const key = '24e26f0b-3c1a-47f8-a7a1-e8461ddb69ce6';
     const tree = new BTree<string,{}>(undefined, undefined, maxNodeSize);
+    await tree.applyEntries();
     // The defaultComparator was not transitive for these inputs due to comparing numeric strings to each other numerically,
     // but lexically when compared to non-numeric strings. This resulted in keys not being orderable, and the tree behaving incorrectly.
     const inputs: [string,{}][] = [
@@ -295,13 +305,13 @@ function testBTree(maxNodeSize: number)
     ];
 
     for (const [id, node] of inputs) {
-      expect( tree.set(id, node)).toBeTruthy();
-      tree.checkValid();
-      expect(tree.get(key)).not.toBeUndefined();
+      expect( await tree.set(id, node)).toBeTruthy();
+      await tree.checkValid();
+      expect(await tree.get(key)).not.toBeUndefined();
     }
-    expect(tree.get(key)).not.toBeUndefined();
+    expect(await tree.get(key)).not.toBeUndefined();
   });
-*/
+
 
 
 }
