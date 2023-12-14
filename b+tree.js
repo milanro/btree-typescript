@@ -693,7 +693,7 @@ class BTree {
     /** Stores a key-value pair only if the key doesn't already exist in the tree.
      * @returns true if a new key was added
      */
-    async etIfNotPresent(key, value) {
+    async setIfNotPresent(key, value) {
         return await this.set(key, value, false);
     }
     /** Returns the next pair whose key is larger than the specified key (or undefined if there is none).

@@ -292,7 +292,7 @@ export default class BTree<K = any, V = any> {
     /** Stores a key-value pair only if the key doesn't already exist in the tree.
      * @returns true if a new key was added
      */
-    etIfNotPresent(key: K, value: V): Promise<boolean>;
+    setIfNotPresent(key: K, value: V): Promise<boolean>;
     /** Returns the next pair whose key is larger than the specified key (or undefined if there is none).
      * If key === undefined, this function returns the lowest pair.
      * @param key The key to search for.

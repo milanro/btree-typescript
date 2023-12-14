@@ -958,7 +958,7 @@ export default class BTree<K = any, V = any>
   /** Stores a key-value pair only if the key doesn't already exist in the tree.
    * @returns true if a new key was added
    */
-  async etIfNotPresent(key: K, value: V): Promise<boolean> {
+  async setIfNotPresent(key: K, value: V): Promise<boolean> {
     return await this.set(key, value, false);
   }
 
