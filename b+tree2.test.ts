@@ -38,7 +38,7 @@ describe('Simple tests on leaf nodes', () =>
     tree.applyEntries();
     test('forEach', async() => {
       let i = 0;
-      expect(await tree.forEach(function(this:any, v, k, tree_) {
+      expect(await tree.forEach(async function(this:any, v, k, tree_) {
         expect(tree_).toBe(tree);
         expect((this as any).self).toBe("me");
         forExpector(k, v, i, i++);
@@ -46,31 +46,31 @@ describe('Simple tests on leaf nodes', () =>
     });
     test('forEachPair', async () => {
       let i = 0;
-      expect(await tree.forEachPair(function(k,v,counter) {
+      expect(await tree.forEachPair(async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++);
       }, 10)).toBe(16);
     });
     test('forRange', async () => {
       let i = 0;
-      expect(await tree.forRange(2, 4, false, function(k,v,counter) {
+      expect(await tree.forRange(2, 4, false, async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++, 2);
       }, 10)).toBe(12);
       i = 0;
-      expect(await tree.forRange(2, 4, true, function(k,v,counter) {
+      expect(await tree.forRange(2, 4, true, async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++, 2);
       }, 10)).toBe(13);
       i = 0;
-      expect(await tree.forRange(0, 4.5, true, function(k,v,counter) {
+      expect(await tree.forRange(0, 4.5, true, async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++);
       }, 10)).toBe(15);
     });
     test('editRange', async () => {
       let i = 0;
-      expect(await tree.editRange(1, 4, true, function(k,v,counter) {
+      expect(await tree.editRange(1, 4, true, async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++, 1);
       }, 10)).toBe(14);
       i = 0;
-      expect(await tree.editRange(1, 9, true, function(k,v,counter) {
+      expect(await tree.editRange(1, 9, true, async function(k,v,counter) {
         forExpector(k, v, counter - 10, i++, 1);
         if (k & 1)  return {delete:true};
         if (k == 2) return {value:"TWO!"};

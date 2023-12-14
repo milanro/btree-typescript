@@ -296,7 +296,7 @@ export default class BTree<K = any, V = any>
   }
 
   async forEach(
-    callback: (v: V, k: K, tree: BTree<K, V>) => void,
+    callback: (v: V, k: K, tree: BTree<K, V>) => Promise<void>,
     thisArg?: any
   ): Promise<number>;
 
@@ -309,11 +309,11 @@ export default class BTree<K = any, V = any>
    * @returns the number of values that were sent to the callback,
    *        or the R value if the callback returned {break:R}. */
   async forEach<R = number>(
-    callback: (v: V, k: K, tree: BTree<K, V>) => { break?: R } | void,
+    callback: (v: V, k: K, tree: BTree<K, V>) => Promise<{ break?: R } | void>,
     thisArg?: any
   ): Promise<number | R> {
     if (thisArg !== undefined) callback = callback.bind(thisArg);
-    return await this.forEachPair((k, v) => callback(v, k, this));
+    return await this.forEachPair(async (k, v) => await callback(v, k, this));
   }
 
   /** Runs a function for each key-value pair, in order from smallest to
@@ -331,12 +331,12 @@ export default class BTree<K = any, V = any>
    *        if you provided one). If the callback returned {break:R} then
    *        the R value is returned instead. */
   async forEachPair<R = number>(
-    callback: (k: K, v: V, counter: number) => { break?: R } | void,
+    callback: (k: K, v: V, counter: number) => Promise<{ break?: R } | void>,
     initialCounter?: number
   ): Promise<number | R> {
     var low = await this.minKey(),
       high = await this.maxKey();
-    return await await this.forRange(low!, high!, true, callback, initialCounter);
+    return await this.forRange(low!, high!, true, callback, initialCounter);
   }
 
   /**
@@ -478,19 +478,19 @@ export default class BTree<K = any, V = any>
   ): Promise<BTree<K, V>> {
     var nu = await this.greedyClone();
     var del: any;
-    await (nu).editAll((k, v, i) => {
-      if (!callback(k, v, i)) return (del = Delete);
+    await (nu).editAll(async (k, v, i) => {
+      if (!(await callback(k, v, i))) return (del = Delete);
     });
     if (!del && returnThisIfUnchanged) return this;
     return nu;
   }
 
   /** Returns a copy of the tree with all values altered by a callback function. */
-  async mapValues<R>(callback:  (v: V, k: K, counter: number) => R): Promise<BTree<K, R>> {
+  async mapValues<R>(callback:  (v: V, k: K, counter: number) => Promise<R>): Promise<BTree<K, R>> {
     var tmp = {} as { value: R };
     var nu = await this.greedyClone();
-    await nu.editAll((k, v, i) => {
-      return (tmp.value = callback(v, k, i)), tmp as any;
+    await nu.editAll(async (k, v, i) => {
+      return (tmp.value = await callback(v, k, i)), tmp as any;
     });
     return nu as any as BTree<K, R>;
   }
@@ -554,9 +554,9 @@ export default class BTree<K = any, V = any>
    */
   async diffAgainst<R>(
     other: BTree<K, V>,
-    onlyThis?: (k: K, v: V) => { break?: R } | void,
-    onlyOther?: (k: K, v: V) => { break?: R } | void,
-    different?: (k: K, vThis: V, vOther: V) => { break?: R } | void
+    onlyThis?: (k: K, v: V) => Promise<{ break?: R } | void>,
+    onlyOther?: (k: K, v: V) =>  Promise<{ break?: R } | void>,
+    different?: (k: K, vThis: V, vOther: V) => Promise<{ break?: R } | void>
   ): Promise<R | undefined> {
     if (other._compare !== this._compare) {
       throw new Error("Tree comparators are not the same.");
@@ -627,7 +627,7 @@ export default class BTree<K = any, V = any>
                   otherLevelIndices[otherLevelIndices.length - 1]
                 ];
               if (!Object.is(valThis, valOther)) {
-                const result = different(
+                const result = await different(
                   thisCursor.currentKey,
                   valThis,
                   valOther
@@ -645,7 +645,7 @@ export default class BTree<K = any, V = any>
               (await otherLeaf.getValues())[
                   otherLevelIndices[otherLevelIndices.length - 1]
                 ];
-              const result = onlyOther(otherCursor.currentKey, otherVal);
+              const result = await onlyOther(otherCursor.currentKey, otherVal);
               if (result && result.break) return result.break;
             }
           } else if (onlyThis) {
@@ -654,7 +654,7 @@ export default class BTree<K = any, V = any>
               (await thisLeaf.getValues())[
                   thisLevelIndices[thisLevelIndices.length - 1]
                 ];
-              const result = onlyThis(thisCursor.currentKey, valThis);
+              const result = await onlyThis(thisCursor.currentKey, valThis);
               if (result && result.break) return result.break;
             }
           }
@@ -704,7 +704,7 @@ export default class BTree<K = any, V = any>
     cursor: DiffCursor<K, V>,
     cursorFinished: DiffCursor<K, V>,
     compareKeys: (a: K, b: K) => number,
-    callback: (k: K, v: V) => { break?: R } | void
+    callback: (k: K, v: V) => Promise<{ break?: R } | void>
   ): Promise<R | undefined> {
     const compared = await BTree.compare(cursor, cursorFinished, compareKeys);
     if (compared === 0) {
@@ -717,14 +717,14 @@ export default class BTree<K = any, V = any>
 
   private static async stepToEnd<K, V, R>(
     cursor: DiffCursor<K, V>,
-    callback: (k: K, v: V) => { break?: R } | void
+    callback: (k: K, v: V) => Promise<{ break?: R } | void>
   ): Promise<R | undefined> {
     let canStep: boolean = true;
     while (canStep) {
       const { leaf, levelIndices, currentKey } = cursor;
       if (leaf) {
         const value = (await leaf.getValues())[levelIndices[levelIndices.length - 1]];
-        const result = callback(currentKey, value);
+        const result = await callback(currentKey, value);
         if (result && result.break) return result.break;
       }
       canStep = await BTree.step(cursor);
@@ -926,7 +926,7 @@ export default class BTree<K = any, V = any>
       false,
       this,
       0,
-      (k, v) => {
+      async (k, v) => {
         results.push(k);
       }
     );
@@ -943,7 +943,7 @@ export default class BTree<K = any, V = any>
       false,
       this,
       0,
-      (k, v) => {
+      async (k, v) => {
         results.push(v);
       }
     );
@@ -1052,7 +1052,7 @@ export default class BTree<K = any, V = any>
    * @returns true if the key existed, false if not.
    */
   async changeIfPresent(key: K, value: V): Promise<boolean> {
-    return await this.editRange(key, key, true, (k, v) => ({ value })) !== 0;
+    return await this.editRange(key, key, true, async (k, v) => ({ value })) !== 0;
   }
 
   /**
@@ -1074,7 +1074,7 @@ export default class BTree<K = any, V = any>
     maxLength: number = 0x3ffffff
   ): Promise<[K, V][]> {
     var results: [K, V][] = [];
-    await this._root.forRange(low, high, includeHigh, false, this, 0, (k, v) => {
+    await this._root.forRange(low, high, includeHigh, false, this, 0, async (k, v) => {
       results.push([k, v]);
       return results.length > maxLength ? Break : undefined;
     });
@@ -1097,14 +1097,15 @@ export default class BTree<K = any, V = any>
     return added;
   }
 
+  /*
   async forRange(
     low: K,
     high: K,
     includeHigh: boolean,
-    onFound?: (k: K, v: V, counter: number) => void,
+    onFound?: (k: K, v: V, counter: number) => Promise<void>,
     initialCounter?: number
   ): Promise<number>;
-
+*/
   /**
    * Scans the specified range of keys, in ascending order by key.
    * Note: the callback `onFound` must not insert or remove items in the
@@ -1126,7 +1127,7 @@ export default class BTree<K = any, V = any>
     low: K,
     high: K,
     includeHigh: boolean,
-    onFound?: (k: K, v: V, counter: number) => { break?: R } | void,
+    onFound?: (k: K, v: V, counter: number) => Promise<{ break?: R } | void>,
     initialCounter?: number
   ): Promise<R | number> {
     var r = await this._root.forRange(
@@ -1174,7 +1175,7 @@ export default class BTree<K = any, V = any>
     low: K,
     high: K,
     includeHigh: boolean,
-    onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void,
+    onFound: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>,
     initialCounter?: number
   ): Promise<number | R> {
     var root = this._root;
@@ -1211,7 +1212,7 @@ export default class BTree<K = any, V = any>
 
   /** Same as `editRange` except that the callback is called for all pairs. */
   async editAll<R = V>(
-    onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void,
+    onFound: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>,
     initialCounter?: number
   ): Promise<R | number> {
     return await this.editRange(
@@ -1677,7 +1678,7 @@ export class BNode<K, V> {
     editMode: boolean,
     tree: BTree<K, V>,
     count: number,
-    onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void
+    onFound?: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>
   ): Promise<EditRangeResult<V, R> | number> {
     var cmp = tree._compare;
     var iLow, iHigh;
@@ -1696,7 +1697,7 @@ export class BNode<K, V> {
     if (onFound !== undefined) {
       for (var i = iLow; i < iHigh; i++) {
         var key = keys[i];
-        var result = onFound(key, values[i], count++);
+        var result = await onFound(key, values[i], count++);
         if (result !== undefined) {
           if (editMode === true) {
             if (key !== keys[i] || (await this.isNodeShared()) === true)
@@ -2079,7 +2080,7 @@ export class BNodeInternal<K, V> extends BNode<K, V> {
     editMode: boolean,
     tree: BTree<K, V>,
     count: number,
-    onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void
+    onFound?: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>
   ): Promise<number | EditRangeResult<V, R>> {
     var cmp = tree._compare;
     var keys = await this.getKeys(),
@@ -2230,7 +2231,7 @@ type DiffCursor<K, V> = {
 var undefVals: any[] = [];
 
 const Delete = { delete: true },
-  DeleteRange = () => Delete;
+  DeleteRange = async () => Delete;
 const Break = { break: true };
 const EmptyLeaf = (function () {
   var n = new BNode<any, any>();

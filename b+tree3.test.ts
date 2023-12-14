@@ -126,7 +126,7 @@ describe("Simple tests on leaf nodes", () => {
           (await tree.minKey())!,
           "F",
           true,
-          (k, v, counter) => {
+          async (k, v, counter) => {
             if (k == "D") return { value: 44 };
             if (k == "E" || k == "G") return { delete: true };
             if (k >= "F") return { stop: counter + 1 };
@@ -180,7 +180,7 @@ describe("Simple tests on leaf nodes", () => {
 
     var list: any[] = [];
     expect(
-      await tree.forEachPair((k, v) => {
+      await tree.forEachPair(async (k, v) => {
         list.push(Object.assign({ value: v }, k));
       }, 10)
     ).toBe(15);
@@ -331,7 +331,7 @@ test("Regression test for mergeSibling setting isShared", async () => {
   }
 
   const different: number[] = [];
-  const onDiff = (k: number) => { different.push(k); }
+  const onDiff = async (k: number) => { different.push(k); }
   await deepClone.diffAgainst(cheapClone, onDiff, onDiff, onDiff);
   expect(different).toEqual([]);
 });

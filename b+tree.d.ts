@@ -135,7 +135,7 @@ export default class BTree<K = any, V = any> {
     /** Releases the tree so that its size is 0. */
     clear(): Promise<void>;
     commit(): Promise<string>;
-    forEach(callback: (v: V, k: K, tree: BTree<K, V>) => void, thisArg?: any): Promise<number>;
+    forEach(callback: (v: V, k: K, tree: BTree<K, V>) => Promise<void>, thisArg?: any): Promise<number>;
     /** Runs a function for each key-value pair, in order from smallest to
      *  largest key. The callback can return {break:R} (where R is any value
      *  except undefined) to stop immediately and return R from forEachPair.
@@ -150,9 +150,9 @@ export default class BTree<K = any, V = any> {
      * @returns the number of pairs sent to the callback (plus initialCounter,
      *        if you provided one). If the callback returned {break:R} then
      *        the R value is returned instead. */
-    forEachPair<R = number>(callback: (k: K, v: V, counter: number) => {
+    forEachPair<R = number>(callback: (k: K, v: V, counter: number) => Promise<{
         break?: R;
-    } | void, initialCounter?: number): Promise<number | R>;
+    } | void>, initialCounter?: number): Promise<number | R>;
     /**
      * Finds a pair in the tree and returns the associated value.
      * @param defaultValue a value to return if the key was not found.
@@ -225,7 +225,7 @@ export default class BTree<K = any, V = any> {
      *  function returns false. `where()` is a synonym for this method. */
     filter(callback: (k: K, v: V, counter: number) => boolean, returnThisIfUnchanged?: boolean): Promise<BTree<K, V>>;
     /** Returns a copy of the tree with all values altered by a callback function. */
-    mapValues<R>(callback: (v: V, k: K, counter: number) => R): Promise<BTree<K, R>>;
+    mapValues<R>(callback: (v: V, k: K, counter: number) => Promise<R>): Promise<BTree<K, R>>;
     private findPath;
     /**
      * Computes the differences between `this` and `other`.
@@ -240,13 +240,13 @@ export default class BTree<K = any, V = any> {
      * @param onlyOther Callback invoked for all keys only present in `other`.
      * @param different Callback invoked for all keys with differing values.
      */
-    diffAgainst<R>(other: BTree<K, V>, onlyThis?: (k: K, v: V) => {
+    diffAgainst<R>(other: BTree<K, V>, onlyThis?: (k: K, v: V) => Promise<{
         break?: R;
-    } | void, onlyOther?: (k: K, v: V) => {
+    } | void>, onlyOther?: (k: K, v: V) => Promise<{
         break?: R;
-    } | void, different?: (k: K, vThis: V, vOther: V) => {
+    } | void>, different?: (k: K, vThis: V, vOther: V) => Promise<{
         break?: R;
-    } | void): Promise<R | undefined>;
+    } | void>): Promise<R | undefined>;
     private static finishCursorWalk;
     private static stepToEnd;
     private static makeDiffCursor;
@@ -358,7 +358,26 @@ export default class BTree<K = any, V = any> {
      * @description Computational complexity: O(pairs.length * log(size + pairs.length))
      */
     setPairs(pairs: [K, V][], overwrite?: boolean): Promise<number>;
-    forRange(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => void, initialCounter?: number): Promise<number>;
+    /**
+     * Scans the specified range of keys, in ascending order by key.
+     * Note: the callback `onFound` must not insert or remove items in the
+     * collection. Doing so may cause incorrect data to be sent to the
+     * callback afterward.
+     * @param low The first key scanned will be greater than or equal to `low`.
+     * @param high Scanning stops when a key larger than this is reached.
+     * @param includeHigh If the `high` key is present, `onFound` is called for
+     *        that final pair if and only if this parameter is true.
+     * @param onFound A function that is called for each key-value pair. This
+     *        function can return {break:R} to stop early with result R.
+     * @param initialCounter Initial third argument of onFound. This value
+     *        increases by one each time `onFound` is called. Default: 0
+     * @returns The number of values found, or R if the callback returned
+     *        `{break:R}` to stop early.
+     * @description Computational complexity: O(number of items scanned + log size)
+     */
+    forRange<R = number>(low: K, high: K, includeHigh: boolean, onFound?: (k: K, v: V, counter: number) => Promise<{
+        break?: R;
+    } | void>, initialCounter?: number): Promise<R | number>;
     /**
      * Scans and potentially modifies values for a subsequence of keys.
      * Note: the callback `onFound` should ideally be a pure function.
@@ -388,9 +407,9 @@ export default class BTree<K = any, V = any> {
      *   nodes are copied before `onFound` is called. This takes O(n) time
      *   where n is proportional to the amount of shared data scanned.
      */
-    editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<number | R>;
+    editRange<R = V>(low: K, high: K, includeHigh: boolean, onFound: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>, initialCounter?: number): Promise<number | R>;
     /** Same as `editRange` except that the callback is called for all pairs. */
-    editAll<R = V>(onFound: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void, initialCounter?: number): Promise<R | number>;
+    editAll<R = V>(onFound: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>, initialCounter?: number): Promise<R | number>;
     /**
      * Removes a range of key-value pairs from the B+ tree.
      * @param low The first key scanned will be greater than or equal to `low`.
@@ -452,7 +471,7 @@ export declare class BNode<K, V> {
     takeFromRight(rhs: BNode<K, V>): Promise<void>;
     takeFromLeft(lhs: BNode<K, V>): Promise<void>;
     splitOffRightSide(): Promise<BNode<K, V>>;
-    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): Promise<EditRangeResult<V, R> | number>;
+    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>): Promise<EditRangeResult<V, R> | number>;
     /** Adds entire contents of right-hand sibling (rhs is left unchanged) */
     mergeSibling(rhs: BNode<K, V>, _: number): Promise<void>;
 }
@@ -489,7 +508,7 @@ export declare class BNodeInternal<K, V> extends BNode<K, V> {
     splitOffRightSide(): Promise<BNodeInternal<K, V>>;
     takeFromRight(rhs: BNode<K, V>): Promise<void>;
     takeFromLeft(lhs: BNode<K, V>): Promise<void>;
-    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => EditRangeResult<V, R> | void): Promise<number | EditRangeResult<V, R>>;
+    forRange<R>(low: K, high: K, includeHigh: boolean | undefined, editMode: boolean, tree: BTree<K, V>, count: number, onFound?: (k: K, v: V, counter: number) => Promise<EditRangeResult<V, R> | void>): Promise<number | EditRangeResult<V, R>>;
     /** Merges child i with child i+1 if their combined size is not too large */
     tryMerge(i: index, maxSize: number): Promise<boolean>;
     /**

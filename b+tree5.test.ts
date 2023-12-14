@@ -111,7 +111,7 @@ function testBTree(maxNodeSize: number)
     
     
     // Test mapValues()
-    (await tree.mapValues(v => v!*10)).forEachPair((k, v) => { expect(v).toBe(k) });
+    (await tree.mapValues(async v => v!*10)).forEachPair(async (k, v) => { expect(v).toBe(k) });
 
     // Perform various kinds of no-ops
     var t1 = tree;
